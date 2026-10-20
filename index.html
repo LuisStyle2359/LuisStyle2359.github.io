@@ -381,7 +381,8 @@ footer{padding-block:30px calc(110px + env(safe-area-inset-bottom,0px));text-ali
 @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-9px)}}
 @keyframes pan{0%,8%{background-position:center 0%}92%,100%{background-position:center 100%}}
 @keyframes marq{to{transform:translateX(-50%)}}
-@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+/* Reduced motion: keep the page alive (typing, fades, counters, clips) but calm the big movements */
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}h1 .l{animation-name:fade}.track{animation-duration:110s}.track.rev{animation-duration:130s}.float-tag,.titan-mini img,.pair .crash{animation:none}.pan-img{animation-duration:70s}.reveal.in{animation-name:fade}}
 </style>
 
 </head>
@@ -711,7 +712,8 @@ footer{padding-block:30px calc(110px + env(safe-area-inset-bottom,0px));text-ali
 
 <script>
 (function(){
-  const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const CALM = matchMedia('(prefers-reduced-motion: reduce)').matches; // only calms tilt/magnet effects
+  const RM = false;
   const FINE = matchMedia('(hover: hover) and (pointer: fine)').matches;
   const $ = id => document.getElementById(id);
   const esc = s => s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
@@ -795,7 +797,7 @@ footer{padding-block:30px calc(110px + env(safe-area-inset-bottom,0px));text-ali
   }
 
   /* tilt + magnetic (desktop pointers only) */
-  if (FINE && !RM) {
+  if (FINE && !CALM) {
     document.querySelectorAll('[data-tilt]').forEach(el => {
       el.addEventListener('pointermove', e => { const r = el.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; el.style.transform = `perspective(900px) rotateY(${x * 10}deg) rotateX(${-y * 8}deg)`; });
       el.addEventListener('pointerleave', () => { el.style.transform = ''; });
