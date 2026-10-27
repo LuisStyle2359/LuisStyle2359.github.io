@@ -1463,6 +1463,8 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 
 .ob .obbird{display:grid;place-items:start;margin:4px 0 14px}
 .ob .ob-body .addrow{margin-bottom:28px}
+
+.bal-res .bal-math{display:block;margin-bottom:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--ink-2);font-size:14px}
 </style>
 
 <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
@@ -3957,10 +3959,10 @@ function drawImpReview() {
     <div class="sheet-foot"><div class="row-btns"><button class="btn ghost press" data-act="imp-no">Abbrechen</button><button class="btn press" data-act="imp-yes">${ic('check', 2.4)} Übernehmen</button></div></div>`;
 }
 function balParts() {
-  const st = S.settings, c = calc(), parts = [];
-  (st.fixed || []).forEach((f, k) => { const a = +f.amount || 0; if (a > 0) parts.push({ k: 'f' + k, l: f.name || 'Feste Kosten', a, on: (+f.every || 1) === 1 }); });
-  const sv = (+st.etf || 0) + (+st.emergency || 0); if (sv > 0) parts.push({ k: 'sv', l: 'Sparen', a: sv, on: true });
-  const bl = r2(Math.max(0, (+st.buffer || 0) - (c.bufSpent || 0))); if (bl > 0.5) parts.push({ k: 'bf', l: 'Extra-Topf, noch übrig', a: bl, on: true });
+  const st = S.settings, c = calc(), parts = [], early = dayDiff(c.per.start, today()) <= 3;
+  (st.fixed || []).forEach((f, k) => { const a = +f.amount || 0; if (a > 0) parts.push({ k: 'f' + k, l: f.name || 'Feste Kosten', a, on: early && (+f.every || 1) === 1 }); });
+  const sv = (+st.etf || 0) + (+st.emergency || 0); if (sv > 0) parts.push({ k: 'sv', l: 'Sparen', a: sv, on: early });
+  const bl = r2(Math.max(0, (+st.buffer || 0) - (c.bufSpent || 0))); if (bl > 0.5) parts.push({ k: 'bf', l: 'Extra-Topf zurücklegen', a: bl, on: false });
   return parts.map(p => Object.assign(p, { on: p.on !== !!(S.sheet.off || {})[p.k] }));
 }
 function balSim(Z) {
@@ -3974,7 +3976,8 @@ function balRes() {
   if (!raw) return { html: `Gerade rechnet Budgie mit <b>${esc(eur(c.todayLeft))}</b> für heute und ${esc(eur(H.left))} ${H.lbl}.`, ok: false };
   const B = numIn(raw) * (/^\s*[-−]/.test(raw) ? -1 : 1), due = balParts().filter(p => p.on).reduce((a, p) => a + p.a, 0), Z = r2(B - due), gap = (() => { const st = S.settings, keep = st.bals || [], td = iso(today()); st.bals = keep.filter(x => x.date !== td); const f0 = calc().funLeft; st.bals = keep; return r2(Z - f0); })();
   const sim = balSim(Z), tl = Math.max(0, sim.c1.todayLeft), sv = (+S.settings.etf || 0) + (+S.settings.emergency || 0);
-  let h = Z >= 0 ? `Bis zum Zahltag bleiben dir <b>${esc(eur(Z))}</b>.` : `Bis zum Zahltag fehlen dir <b>${esc(eur(-Z))}</b>.`;
+  let h = `<span class="bal-math num">${esc(eur(B))} auf dem Konto${due > 0.004 ? ` − ${esc(eur(due))} kommt noch` : ''} = <b>${esc(eur(Z))}</b></span>`;
+  h += Z >= 0 ? `Bis zum Zahltag bleiben dir <b>${esc(eur(Z))}</b>.` : `Bis zum Zahltag fehlen dir <b>${esc(eur(-Z))}</b>.${due > 0.004 ? ' Ist etwas davon schon abgebucht? Dann tipp es oben an.' : ''}`;
   h += ` Auf deiner Karte steht dann <b>Heute noch frei: ${esc(eur(tl))}</b> (jetzt ${esc(eur(c.todayLeft))}).`;
   if (gap < -5) h += `<span class="bal-gap">Auf deinem Konto sind ${esc(eur(-gap))} weniger, als Budgie gerechnet hat. Meistens sind das Ausgaben, die noch nicht eingetragen sind.</span><button class="bal-forgot press ${s.forgot ? 'on' : ''}" data-act="bal-forgot" aria-pressed="${!!s.forgot}"><i>${ic(s.forgot ? 'check' : 'plus', 2.4)}</i>Als „Vergessene Ausgaben“ (${esc(eur(-gap))}) eintragen</button>`;
   else if (gap > 5) h += `<span class="bal-gap">Auf deinem Konto sind ${esc(eur(gap))} mehr, als Budgie gerechnet hat, zum Beispiel Geld, das du nicht eingetragen hast.</span>`;
@@ -4008,7 +4011,7 @@ function saveBal() {
   if (Math.abs(d) >= 0.01) st.bals.push({ id: rid(), date: td, d, bal: r2(B), ts: Date.now() });
   else if (!st.bals.length) st.bals = [];
   Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12);
-  toast(fit ? `Eingetragen: Vergessene Ausgaben ${eur(fit.amount)}. Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.`, 'Rückgängig', () => { st.bals = before; if (fit) { const rr = removeItem(fit.id); if (rr) Store.saveMonth(rr.key); } Store.saveSettings(true); render(); });
+  toast(fit ? `Eingetragen: Vergessene Ausgaben ${eur(fit.amount)}. ${r.Z >= 0 ? `Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : `Bis zum Zahltag fehlen dir ${eur(-r.Z)}.`}` : Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : r.Z >= 0 ? `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : `Abgeglichen: Bis zum Zahltag fehlen dir ${eur(-r.Z)}.`, 'Rückgängig', () => { st.bals = before; if (fit) { const rr = removeItem(fit.id); if (rr) Store.saveMonth(rr.key); } Store.saveSettings(true); render(); });
 }
 function drawSheet() {
   const s = S.sheet;
