@@ -1436,6 +1436,25 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 #sheet.pvstill .eptilt .c3,#sheet.pvstill .eptilt .c3 *,#sheet.pvstill .eptilt .c3 *::before,#sheet.pvstill .eptilt .c3 *::after{animation-play-state:paused!important}
 
 #tour .tc-chat .me{background:rgba(214,194,154,.15);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(214,194,154,.3);font-weight:500}
+
+.bal-parts{display:grid;gap:8px;margin-top:14px}
+.bal-parts .bal-h{font-size:13px;color:var(--ink-3)}
+.bal-p{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:var(--surface-2,#232126);color:var(--ink-3);text-align:left;font-size:14.5px}
+.bal-p i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.06)}
+.bal-p i svg{width:14px;height:14px}
+.bal-p span{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
+.bal-p.on{color:var(--ink)}
+.bal-p.on span{text-decoration:none}
+.bal-p.on i{background:rgba(214,194,154,.22);color:#E6CF9C}
+.bal-res{margin:14px 2px 0;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.bal-res b{color:var(--ink)}
+.balc .bal-last{margin-top:6px}
+
+.ob .obname{margin-top:22px;height:64px;font-size:24px;font-weight:600;letter-spacing:-.01em;padding:0 18px}
+.ob .obbuf-page{margin-top:18px;padding:0;background:none;border:0}
+
+.ob .obbird{display:grid;place-items:start;margin:4px 0 14px}
+.ob .ob-body .addrow{margin-bottom:28px}
 </style>
 
 <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
@@ -1625,6 +1644,7 @@ function fixSettings(s) {
   o.fixed = Array.isArray(o.fixed) ? o.fixed : [];
   o.swept = (s && s.swept && typeof s.swept === 'object') ? s.swept : {};
   o.incomes = Array.isArray(o.incomes) ? o.incomes : [];
+  o.bals = Array.isArray(o.bals) ? o.bals.filter(b => b && b.date) : [];
   o.wishes = Array.isArray(o.wishes) ? o.wishes : [];
   o.badges = (s && s.badges && typeof s.badges === 'object') ? s.badges : {};
   o.flags = (s && s.flags && typeof s.flags === 'object') ? s.flags : {};
@@ -1672,7 +1692,8 @@ function calc(ref = today()) {
     if (i.amount > room + 0.004) ov.push({ id: i.id + '~', amount: r2(i.amount - room), cat: i.cat, date: i.date, ts: i.ts, _v: 1 });
     bufG[k] = used + i.amount;
   });
-  const items = ov.length ? items0.concat(ov) : items0;
+  const adjs = (st.bals || []).filter(b => b && b.date && isFinite(+b.d)).map(b => ({ id: 'adj~' + b.id, type: 'in', amount: +b.d, cat: 'zurueck', date: b.date, ts: b.ts || 0, spread: true, _adj: 1 }));
+  const items = (ov.length ? items0.concat(ov) : items0).concat(adjs);
   const firstDate = items.reduce((m, i) => (!m || i.date < m) ? i.date : m, '');
   const S0 = st.startDate ? parse(st.startDate) : (firstDate ? parse(firstDate) : null);
   const potOf = it => it._v ? 'fun' : isIn(it) ? 'in' : isSweep(it) ? 'sweep' : (CAT[it.cat] || CAT.sonst).pot;
@@ -1685,15 +1706,15 @@ function calc(ref = today()) {
   const avail = (p, at) => { const e = effStart(p); const a = at < e ? e : at; const f = flows(e, a); return alloc(p) + f.inc - f.spent - f.sw; };
   const eS = effStart(per);
   const pf = flows(eS, per.end);
-  const perItems = items.filter(i => !i._v && between(i, per.start, per.end));
+  const perItems = items.filter(i => !i._v && !i._adj && between(i, per.start, per.end));
   const bufOver = sum(ov.filter(i => between(i, per.start, per.end)));
-  const funSpent = pf.spent, funIn = pf.inc, funSwept = pf.sw;
+  const funSpent = pf.spent, funIn = pf.inc, funSwept = pf.sw, adjP = sum(items.filter(i => i._adj && between(i, eS, per.end)));
   const bufSpent = sum(perItems.filter(i => potOf(i) === 'buffer'));
   const allocP = alloc(per);
   const funLeft = allocP + funIn - funSpent - funSwept;
   const base = allocP + funIn - funSwept;
   const ws = weekStart(ref), we = addDays(ws, 7);
-  let weekBudget = 0, covStart = null, baseWeek = 0, incWeek = 0, swWeek = 0, carryAll = null, carryDays = 0, carryFrom = null;
+  let adjWeek = 0, weekBudget = 0, covStart = null, baseWeek = 0, incWeek = 0, swWeek = 0, carryAll = null, carryDays = 0, carryFrom = null;
   const periods = [periodOf(ws, Pd)]; while (periods[periods.length - 1].end < we) periods.push(periodShift(periods[periods.length - 1], Pd, 1));
   periods.forEach(p => {
     const e = effStart(p); const a = ws > e ? ws : e; const b = we < p.end ? we : p.end;
@@ -1703,14 +1724,14 @@ function calc(ref = today()) {
     weekBudget += avail(p, a) * dayDiff(a, b) / Math.max(1, dayDiff(a, p.end));
     baseWeek += fun * dayDiff(a, b) / plen(p);
     items.filter(i => between(i, a, b)).forEach(i => {
-      if (isInc(i)) { const v = i.spread ? i.amount * dayDiff(parse(i.date), b) / Math.max(1, dayDiff(parse(i.date), p.end)) : i.amount; weekBudget += v; incWeek += v; }
+      if (isInc(i)) { const v = i.spread ? i.amount * dayDiff(parse(i.date), b) / Math.max(1, dayDiff(parse(i.date), p.end)) : i.amount; weekBudget += v; if (i._adj) adjWeek += v; else incWeek += v; }
       else if (isSw(i)) { weekBudget -= i.amount; swWeek += i.amount; }
     });
   });
   if (!covStart) covStart = ws;
   const weekCov = Math.max(1, dayDiff(covStart, we));
   const weekItems = items.filter(i => isFun(i) && between(i, covStart, we));
-  const weekIn = sum(items.filter(i => isInc(i) && between(i, covStart, we)));
+  const weekIn = sum(items.filter(i => isInc(i) && !i._adj && between(i, covStart, we)));
   const weekSpent = sum(weekItems);
   const weekBufOver = sum(weekItems.filter(i => i._v));
   const weekPlan = sum(weekItems.filter(i => i._plan));
@@ -1745,7 +1766,7 @@ function calc(ref = today()) {
   const limit = perDay; // same number as on the card: sticking to it keeps you on track until payday
   const rescueOn = funLeft < 0 || !!(forecast && !forecast.ok);
   const rescue = rescueOn ? limit : 0;
-  return { spentToday, dayBase, todayLeft, limit, rescueOn, perDayToPay, weekPlan, carryAll: carryAll || 0, carryDays, carryFrom: carryFrom || covStart, bufOver, weekBufOver, eS, baseWeek, incWeek, swWeek, carry, rescue, nextWeek, forecast, fixedM, save, income, free, fun, weekly, per, perItems, funSpent, funIn, funSwept, bufSpent, funLeft, base, allocP, ws, we, covStart, weekSpent, weekIn, weekBudget, weekLeft, daysLeftWeek, perDaysLeft, perDay, daily, byDay, usedFrac, status, dayIdx, Pd, rate: income > 0 ? save / income : 0 };
+  return { spentToday, dayBase, todayLeft, limit, rescueOn, perDayToPay, weekPlan, carryAll: carryAll || 0, carryDays, carryFrom: carryFrom || covStart, bufOver, weekBufOver, eS, baseWeek, incWeek, adjWeek, adjP, swWeek, carry, rescue, nextWeek, forecast, fixedM, save, income, free, fun, weekly, per, perItems, funSpent, funIn, funSwept, bufSpent, funLeft, base, allocP, ws, we, covStart, weekSpent, weekIn, weekBudget, weekLeft, daysLeftWeek, perDaysLeft, perDay, daily, byDay, usedFrac, status, dayIdx, Pd, rate: income > 0 ? save / income : 0 };
 }
 function monthsToGoal(st, rate) {
   const g = st.goal, pmt = +st.etf || 0; let v = +g.saved || 0; const rt = rate === undefined ? +g.rate : rate;
@@ -2232,8 +2253,8 @@ function homeView() {
     ${S.why ? (() => { const H = hz(c), pool = H.left + c.spentToday, nD = H.days, gone = H.pay ? Math.max(0, r2(c.allocP + c.funIn - c.funSpent - pool)) : Math.max(0, r2(c.weekBudget - pool)), cf = `${c.carryFrom.getDate()}.${c.carryFrom.getMonth() + 1}.`, lwl = lw && lw.left > 0.5 && c.carry > lw.left + 0.5 ? lw.left : 0; const row = (l, v, cls = '', sm = '') => `<div class="cr ${cls}"><span>${l}${sm ? `<small>${sm}</small>` : ''}</span><b>${v}</b></div>`; return `<section class="card why">
       ${over ? `<p class="whyp">Diese Woche hattest du <b>${esc(eur(c.weekBudget))}</b>. Ausgegeben${c.weekPlan > 0.004 ? ' oder geplant' : ''} sind schon <b>${esc(eur(c.weekSpent))}</b>, also <b>${esc(eur(-c.weekLeft))}</b> zu viel. Das verteilt sich auf die Tage bis zum Zahltag.</p>` : `<p class="whyp whyk">${H.Lbl} hast du noch <b>${esc(eur(pool))}</b> für ${nD} ${nD === 1 ? 'Tag' : 'Tage'}, also <b>${esc(eur(c.dayBase))}</b> pro Tag.${c.spentToday > 0.004 ? ` Heute schon ${esc(eur(c.spentToday))} ausgegeben, bleiben <b>${esc(eur(c.todayLeft))}</b>.` : ''}</p>
       <details class="whymore"><summary>Woher kommen die ${esc(eur(pool))}?</summary><div class="calc">
-        ${H.pay ? `${row('Geld für diesen Monat', esc(eur(c.allocP)))}${c.funIn > 0.004 ? row('+ bekommen', esc(eur(c.funIn))) : ''}${row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)))}`
-        : `${row('Wochengeld', esc(eur(c.baseWeek)), '', Math.abs(c.baseWeek - c.weekly) >= 0.3 ? `im Schnitt ${eur(c.weekly)}, dieser Monat ist ${c.baseWeek < c.weekly ? 'länger' : 'kürzer'}` : '')}${Math.abs(c.carry) >= 0.5 ? row(c.carry > 0 ? `+ übrig seit dem ${cf}` : `− zu viel seit dem ${cf}`, esc(eur(Math.abs(c.carry))), '', lwl ? `davon ${eur(lwl)} letzte Woche` : '') : ''}${c.incWeek ? row('+ bekommen', esc(eur(c.incWeek))) : ''}${c.swWeek ? row('− fürs Ziel', esc(eur(c.swWeek))) : ''}${gone > 0.004 ? row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)), '', c.weekPlan > 0.004 ? `davon ${eur(c.weekPlan)} geplant` : '') : ''}`}
+        ${H.pay ? `${row('Geld für diesen Monat', esc(eur(c.allocP)))}${c.funIn - c.adjP > 0.004 ? row('+ bekommen', esc(eur(c.funIn - c.adjP))) : ''}${Math.abs(c.adjP) > 0.004 ? row(c.adjP > 0 ? '+ Kontostand-Abgleich' : '− Kontostand-Abgleich', esc(eur(Math.abs(c.adjP)))) : ''}${row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)))}`
+        : `${row('Wochengeld', esc(eur(c.baseWeek)), '', Math.abs(c.baseWeek - c.weekly) >= 0.3 ? `im Schnitt ${eur(c.weekly)}, dieser Monat ist ${c.baseWeek < c.weekly ? 'länger' : 'kürzer'}` : '')}${Math.abs(c.carry) >= 0.5 ? row(c.carry > 0 ? `+ übrig seit dem ${cf}` : `− zu viel seit dem ${cf}`, esc(eur(Math.abs(c.carry))), '', lwl ? `davon ${eur(lwl)} letzte Woche` : '') : ''}${c.incWeek ? row('+ bekommen', esc(eur(c.incWeek))) : ''}${Math.abs(c.adjWeek) > 0.004 ? row(c.adjWeek > 0 ? '+ Kontostand-Abgleich' : '− Kontostand-Abgleich', esc(eur(Math.abs(c.adjWeek))), '', 'auf die Tage bis zum Zahltag verteilt') : ''}${c.swWeek ? row('− fürs Ziel', esc(eur(c.swWeek))) : ''}${gone > 0.004 ? row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)), '', c.weekPlan > 0.004 ? `davon ${eur(c.weekPlan)} geplant` : '') : ''}`}
         ${row('= ab heute', esc(eur(pool)), 'tot')}
       </div></details>
       <p class="whyfoot">${H.Lbl} bleiben nach heute <b>${esc(eur(H.left))}</b>, die zweite Zahl auf deiner Karte.${H.pay ? ' Der Zahltag kommt vor Sonntag, deshalb rechnet Budgie bis dahin.' : ''}</p>`}
@@ -2241,7 +2262,7 @@ function homeView() {
     </section>`; })() : ''}
     ${S.details ? `<section class="card month">
         <div class="card-h" style="margin:0 0 6px"><h2>Bis zum Zahltag ${tq('zahltag')}</h2><span class="muted small">${daysToPay === 1 ? 'morgen' : `in ${daysToPay} Tagen`}</span></div>
-        <div class="kv"><span class="v" style="${c.funLeft < 0 ? 'color:var(--bad)' : ''}">${odo('fl', c.funLeft)}</span><span class="muted small">übrig von ${esc(eur0(c.allocP))}${c.funIn ? ' + ' + esc(eur0(c.funIn)) + ' bekommen' : ''}</span></div>
+        <div class="kv"><span class="v" style="${c.funLeft < 0 ? 'color:var(--bad)' : ''}">${odo('fl', c.funLeft)}</span><span class="muted small">übrig von ${esc(eur0(c.allocP))}${c.funIn - c.adjP > 0.004 ? ' + ' + esc(eur0(c.funIn - c.adjP)) + ' bekommen' : ''}${Math.abs(c.adjP) > 0.004 ? (c.adjP > 0 ? ' + ' : ' − ') + esc(eur0(Math.abs(c.adjP))) + ' Abgleich' : ''}</span></div>
         <div class="bar" style="margin-top:12px"><i class="${perCls}" data-bar="per" data-frac="${remFrac}"></i></div>
         ${fc && fc.ok ? `<p class="monthnote">Bei deinem Tempo bleiben am Zahltag ca. <b>${esc(eur0(Math.max(0, fc.rest)))}</b> übrig.</p>` : fc ? `<p class="monthnote">Bei deinem normalen Tempo ist dein Geld am <b>${dShort(fc.date)}</b> alle, ${fc.early} ${fc.early === 1 ? 'Tag' : 'Tage'} zu früh. Große Einzelausgaben zählen dabei nicht als Tempo.</p>` : ''}
         ${c.rescueOn ? `<ul class="levers">${levers(c, bufLeft).map(x => `<li><span>${x}</span></li>`).join('')}</ul>` : ''}
@@ -2460,6 +2481,12 @@ function budgetView() {
   <h1 class="page-title rise" style="--i:${i++}">Budget</h1>
   <div class="stack">
     <section class="card" ${ri()}><div class="card-h"><h2>Dein Monat</h2></div><div class="sum-live" id="live">${liveSummary()}</div></section>
+    <section class="card balc" ${ri()}>
+      <div class="card-h" style="margin:0"><h2>Kontostand</h2></div>
+      <p class="note">Stimmt Budgies Rechnung nicht mit deinem Konto überein, zum Beispiel weil du mitten im Monat angefangen hast? Gib deinen Kontostand ein, dann rechnet Budgie ab heute damit.</p>
+      ${(() => { const L = (st.bals || []).slice(-1)[0]; return L ? `<p class="note bal-last">Zuletzt abgeglichen am ${dShort(parse(L.date))}${isFinite(+L.bal) ? ` mit ${esc(eur(+L.bal))} auf dem Konto` : ''}.</p>` : ''; })()}
+      <button class="btn ghost press" data-act="bal" style="margin-top:12px;width:100%">${ic('bank')} Kontostand abgleichen</button>
+    </section>
     <section class="card form" ${ri()}>
       <div class="card-h" style="margin:0"><h2>Einkommen</h2></div>
       <label class="fld"><span>Dein Name</span><input class="field" id="s-name" data-bind="name" data-type="text" value="${esc(st.name)}" placeholder="Name"></label>
@@ -2788,7 +2815,7 @@ function tourSteps() {
   const after = tl2 - buy[1], wk = H.left - ex[1] - buy[1], sv = (+S.settings.etf || 0) + (+S.settings.emergency || 0);
   const verdict = after >= 0 ? `Ja, passt! Danach heute noch ${eur(after)} frei.` : wk >= 0 ? `Heute wird's knapp, du wärst ${eur(-after)} drüber. Kein Drama, das verteilt sich auf die nächsten Tage.` : `Gerade lieber nicht: ${H.lbl} ist dein Geld schon aufgebraucht.`;
   return [
-    { t: '#hero', r: 20, pad: 8, h: 'So funktioniert „Heute noch frei“', p: 'So viel kannst du heute ausgeben, damit dein Geld bis zum Zahltag reicht. Das ist ein Plan, nicht dein Kontostand. Was übrig bleibt, kommt auf morgen drauf.' },
+    { t: '#hero', r: 20, pad: 8, h: 'So funktioniert „Heute noch frei“', p: 'So viel kannst du heute ausgeben, damit dein Geld bis zum Zahltag reicht. Was übrig bleibt, kommt auf morgen drauf. Passt das nicht zu deinem Konto, gleichst du es unter Budget ab.' },
     { t: '.sayrow .saybar', r: 20, pad: 6, below: 1, h: 'Das ist Budgie', p: `${NATIVE ? 'Schreib' : 'Sag oder schreib'} ihm in ganz normalen Sätzen, was du ausgegeben hast, oder frag ihn was zu deinem Geld. Tippfehler sind egal. Ohne Bank-Login: Deine Daten bleiben auf deinem Handy.`, chat: [['me', ex[0]], ['bud', `Gespeichert, ${ex[2]}${ex[3]}`], ['me', `Kann ich mir ${buy[0]} für ${eur0(buy[1])} leisten?`], ['bud', verdict]] },
     { t: '.sayrow .askc', r: 22, pad: 6, below: 1, h: 'Kauf-Check und Plus', p: 'Keine Lust zu schreiben? Im Kauf-Check tippst du nur einen Preis ein und siehst sofort, ob er reinpasst. Mit dem Plus unten trägst du eine Ausgabe per Zahlenfeld ein.' },
     { t: '.tabbar .tab[data-tab=goal]', r: 18, pad: 4, h: 'Ziele und Belohnungen', p: 'Unter „Ziele“ legst du fest, wofür du sparst. Abzeichen, z. B. für deinen ersten Eintrag oder 3 Tage Serie, bringen dich ins nächste Level und schalten neue Karten frei:', skins: 1, tryIt: 'ex', last: true }
@@ -3917,8 +3944,49 @@ function drawImpReview() {
     <div class="imp" style="margin-top:10px"><p><b>${imp.items.length} ${imp.items.length === 1 ? 'Eintrag' : 'Einträge'} gefunden</b>${imp.src === 'ai' ? '' : ' (letzte 60 Tage)'}.${imp.skipped ? ` ${imp.skipped} übersprungen (Abos, Sparen oder schon eingetragen).` : ''} Kategorien hat Budgie geraten oder sich gemerkt, du kannst sie hier ändern:</p><div class="impl">${imp.items.slice(0, 40).map((it, k) => `<div class="${isIn(it) ? 'inc' : ''}"><span>${esc(it.note || '–')}<small style="display:block;color:var(--ink-3);font-size:12px">${dShort(parse(it.date))}</small></span><b class="num">${isIn(it) ? '+' : ''}${esc(eur(it.amount))}</b><select class="field" data-impcat="${k}">${(isIn(it) ? INCATS : CATS.filter(c => !c.hidden)).map(c => `<option value="${c.id}" ${it.cat === c.id ? 'selected' : ''}>${esc(c.short)}</option>`).join('')}</select><button class="ix press" data-act="imp-del" data-k="${k}" aria-label="Nicht übernehmen">${ic('x', 2.4)}</button></div>`).join('')}${imp.items.length > 40 ? `<p class="note">… und ${imp.items.length - 40} weitere, die mit übernommen werden.</p>` : ''}</div>${imp.items.some(i => i.cat === 'zurueck') && recentSplit() ? `<p class="refhint">Rückzahlungen für geteilte Rechnungen lieber weglassen (✕): Budgie zählt dort schon nur deinen Anteil.</p>` : ''}</div>
     <div class="sheet-foot"><div class="row-btns"><button class="btn ghost press" data-act="imp-no">Abbrechen</button><button class="btn press" data-act="imp-yes">${ic('check', 2.4)} Übernehmen</button></div></div>`;
 }
+function balParts() {
+  const st = S.settings, c = calc(), parts = [];
+  (st.fixed || []).forEach((f, k) => { const a = +f.amount || 0; if (a > 0) parts.push({ k: 'f' + k, l: f.name || 'Feste Kosten', a, on: (+f.every || 1) === 1 }); });
+  const sv = (+st.etf || 0) + (+st.emergency || 0); if (sv > 0) parts.push({ k: 'sv', l: 'Sparen', a: sv, on: true });
+  const bl = r2(Math.max(0, (+st.buffer || 0) - (c.bufSpent || 0))); if (bl > 0.5) parts.push({ k: 'bf', l: 'Extra-Topf, noch übrig', a: bl, on: true });
+  return parts.map(p => Object.assign(p, { on: p.on !== !!(S.sheet.off || {})[p.k] }));
+}
+function balRes() {
+  const s = S.sheet, c = calc(), raw = (s.bal || '').trim();
+  if (!raw) return { html: `Bisher rechnet Budgie bis zum Zahltag mit <b>${esc(eur(c.funLeft))}</b>.`, ok: false };
+  const B = numIn(raw) * (/^\s*[-−]/.test(raw) ? -1 : 1), due = balParts().filter(p => p.on).reduce((a, p) => a + p.a, 0), Z = r2(B - due), d = c.perDaysLeft;
+  return { Z, ok: true, html: Z >= 0 ? `Bleiben bis zum Zahltag <b>${esc(eur(Z))}</b>, also ca. <b>${esc(eur(Z / d))}</b> pro Tag für ${d} ${d === 1 ? 'Tag' : 'Tage'}. Bisher waren es ${esc(eur(c.funLeft))}.` : `Damit fehlen dir bis zum Zahltag <b>${esc(eur(-Z))}</b>. Budgie zeigt dir dann jeden Tag, wie du am besten durchkommst.` };
+}
+function drawBal() {
+  const s = S.sheet, parts = balParts(), r = balRes();
+  $('#sheet').innerHTML = `
+    <div class="grab"></div>
+    <div class="sheet-h"><h3>Kontostand abgleichen</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
+    <label class="fld" style="margin-top:8px"><span>So viel ist gerade auf deinem Konto</span><div class="money"><input class="field num" id="bal-in" inputmode="decimal" placeholder="0" value="${esc(s.bal || '')}" autocomplete="off"></div></label>
+    ${parts.length ? `<div class="bal-parts"><span class="bal-h">Geht bis zum Zahltag noch ab? Tipp weg, was schon abgebucht ist.</span>${parts.map(p => `<button class="bal-p press ${p.on ? 'on' : ''}" data-act="bal-tg" data-v="${p.k}" aria-pressed="${p.on}"><i>${ic(p.on ? 'check' : 'x', 2.4)}</i><span>${esc(p.l)}</span><b class="num">${esc(eur(p.a))}</b></button>`).join('')}</div>` : ''}
+    <p class="bal-res" id="bal-res">${r.html}</p>
+    <div class="sheet-foot"><button class="btn press" id="balbtn" data-act="bal-save" ${r.ok ? '' : 'disabled'}>${ic('check', 2.4)} Übernehmen</button></div>`;
+}
+function balUpd() { const s = S.sheet; if (!s || s.mode !== 'bal') return; const el = $('#bal-in'); s.bal = el ? el.value : ''; const r = balRes(), o = $('#bal-res'), b = $('#balbtn'); if (o) o.innerHTML = r.html; if (b) b.disabled = !r.ok; }
+function openBal() {
+  if (!S.settings) return;
+  const wasOpen = !!S.sheet; S.sheet = { mode: 'bal', bal: '', off: {} }; drawSheet(); buzz(8);
+  if (!wasOpen) { $('#fab')?.classList.add('on'); requestAnimationFrame(() => { veilOn(); $('#sheet').classList.add('on'); }); }
+  setTimeout(() => { const el = $('#bal-in'); if (el) el.focus(); }, 420);
+}
+function saveBal() {
+  const s = S.sheet; if (!s || s.mode !== 'bal') return; const r = balRes(); if (!r.ok) return;
+  const st = S.settings, before = (st.bals || []).slice(), td = iso(today()), B = numIn(s.bal) * (/^\s*[-−]/.test(s.bal) ? -1 : 1);
+  st.bals = before.filter(b => b.date !== td);
+  const d = r2(r.Z - calc().funLeft);
+  if (Math.abs(d) >= 0.01) st.bals.push({ id: rid(), date: td, d, bal: r2(B), ts: Date.now() });
+  else if (!st.bals.length) st.bals = [];
+  Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12);
+  toast(Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.`, 'Rückgängig', () => { st.bals = before; Store.saveSettings(true); render(); });
+}
 function drawSheet() {
   const s = S.sheet;
+  if (s.mode === 'bal') return drawBal();
   if (s.mode === 'impchoose') return drawImpChoose();
   if (s.mode === 'say') return drawSay();
   if (s.mode === 'badges') return drawBadges();
@@ -4079,7 +4147,7 @@ function toast(msg, act, fn) {
 }
 
 /* ---------- onboarding ---------- */
-const OB_STEPS = 5;
+const OB_STEPS = 8;
 const PRESETS = ['Handy', 'Spotify', 'Netflix', 'Deutschlandticket', 'Fitnessstudio', 'Snapchat+', 'Versicherung', 'Miete'];
 function startOb(prefill) { S.ob = { step: prefill ? 1 : 0, dir: 'go', d: fixSettings(prefill ? JSON.parse(JSON.stringify(prefill)) : blankSettings()) }; }
 function obDur(d) { const tg = +d.goal.target || 0, pm = +d.etf || 0; if (!(tg > 0) || !(pm > 0)) return ''; const nm = d.goal.name && d.goal.name !== 'Mein Sparziel' ? d.goal.name : 'dein Ziel'; const mo = Math.ceil(tg / pm), du = fmtDur(mo); return `Damit hast du „${esc(nm)}“ in ca. <b>${du}</b>${du.endsWith('.') ? '' : '.'}${(+d.income || 0) + sum(d.incomes) > 0 && pm > ((+d.income || 0) + sum(d.incomes)) * 0.35 ? ' Das ist viel von deinem Geld. Prüf, ob dir genug zum Leben bleibt, ändern geht jederzeit.' : mo > 120 ? ' Das ist lang. Tipp: Fang mit einem Zwischenziel an, zum Beispiel Führerschein oder Anzahlung.' : ''}`; }
@@ -4115,22 +4183,25 @@ function obStep() {
         <div><i>${ic('plus')}</i>Ausgaben in zwei Sekunden eintragen</div>
         <div><i>${ic('target')}</i>Sparziele, Zwischenziele und Abzeichen</div>
       </div>${PWA && !STANDALONE ? `<div class="installbox">${ic('phone')}<span><b>Erst zum Home-Bildschirm hinzufügen</b>Tippe in Safari unten auf <b>Teilen</b> und dann auf <b>„Zum Home-Bildschirm“</b>. Öffne Budgie danach dort und richte es ein. Safari und die Home-Bildschirm-App speichern getrennt.</span></div>` : ''}</div>`;
-  if (step === 1) return `<h2>Wie viel Geld hast du im Monat?</h2><p class="lead">Dein Hauptgeld, z. B. Gehalt, Taschengeld oder BAföG.</p>
-      <div class="bigmoney"><input class="bigin num" id="ob-income" data-ob="income" inputmode="decimal" value="${fmtIn(d.income)}" placeholder="0"><span>€</span></div>
+  if (step === 1) return `<div class="obbird">${budgieArt('gruen', 'happy', 76)}</div><h2>Wie heißt du?</h2><p class="lead">Damit Budgie dich mit deinem Namen begrüßt. Du kannst das Feld auch leer lassen.</p>
+      <input class="field obname" id="ob-name" data-ob="name" value="${esc(d.name)}" placeholder="Dein Vorname" autocomplete="given-name" maxlength="30" aria-label="Dein Vorname" enterkeyhint="next">`;
+  if (step === 2) return `<h2>${(d.name || '').trim() ? `Hi ${esc(d.name.trim())}! ` : ''}Wie viel Geld hast du im Monat?</h2><p class="lead">Dein Hauptgeld, z. B. Gehalt, Ausbildungsgeld, Taschengeld oder BAföG.</p>
+      <div class="bigmoney"><input class="bigin num" id="ob-income" data-ob="income" inputmode="decimal" value="${fmtIn(d.income)}" placeholder="0" enterkeyhint="next"><span>€</span></div>
       <p class="lead" style="margin:20px 0 10px">Noch mehr Geld im Monat?</p>
       <div class="chips" style="flex-wrap:wrap;overflow:visible;padding-top:0">${['Minijob', 'Taschengeld', 'Kindergeld', 'BAföG'].map(n => `<button class="chip press" data-inc="${n}">${ic('plus')}${n}</button>`).join('')}</div>
-      <div class="inrows" id="obin">${inRows(d.incomes, 'oin')}</div>
-      <p class="lead" style="margin:22px 0 10px">An welchem Tag kommt das meiste davon?</p>
-      <div class="daygrid">${Array.from({ length: 31 }, (_, k) => `<button class="press ${+d.payday === k + 1 ? 'on' : ''}" data-pay="${k + 1}">${k + 1}</button>`).join('')}</div>
-      <label class="fld" style="margin-top:22px"><span>Wie heißt du? (optional)</span><input class="field" id="ob-name" data-ob="name" value="${esc(d.name)}" placeholder="Dein Name" autocomplete="given-name" maxlength="30"></label>`;
-  if (step === 2) return `<h2>Welche Abos und Rechnungen hast du?</h2><p class="lead">Abos, Handy, Versicherungen. Alles, was regelmäßig abgebucht wird.</p>
+      <div class="inrows" id="obin">${inRows(d.incomes, 'oin')}</div>`;
+  if (step === 3) return `<h2>Wann kommt dein Geld?</h2><p class="lead">Tipp auf den Tag im Monat. Ab da rechnet Budgie jeden Monat neu. Kommt dein Geld an verschiedenen Tagen, nimm den Tag mit dem meisten Geld.</p>
+      <div class="daygrid" style="margin-top:18px">${Array.from({ length: 31 }, (_, k) => `<button class="press ${+d.payday === k + 1 ? 'on' : ''}" data-pay="${k + 1}">${k + 1}</button>`).join('')}</div>
+      <p class="note" style="margin-top:14px">29., 30. oder 31.: In kürzeren Monaten nimmt Budgie automatisch den letzten Tag des Monats.</p>`;
+  if (step === 4) return `<h2>Welche Abos und Rechnungen hast du?</h2><p class="lead">Abos, Handy, Versicherungen. Alles, was regelmäßig abgebucht wird.</p>
       <div class="chips" style="flex-wrap:wrap;overflow:visible">${PRESETS.filter(n => !d.fixed.some(f => f.name === n)).map(n => `<button class="chip press" data-preset="${esc(n)}">${ic('plus')}${esc(n)}</button>`).join('')}</div>
       <div class="form" id="obfx" style="margin-top:8px">${fxRows(d.fixed, 'ofx')}</div>
-      <button class="addrow press" data-act="ofx-add">${ic('plus')} Eigene hinzufügen</button>
-      <div class="obbuf"><b>Extra-Topf</b><span>Geld pro Monat für Klamotten, Friseur, Geschenke und alles, was nicht jede Woche anfällt. Es geht nicht von deinem Wochengeld ab.</span>
+      <button class="addrow press" data-act="ofx-add">${ic('plus')} Eigene hinzufügen</button>`;
+  if (step === 5) return `<h2>Brauchst du einen Extra-Topf?</h2><p class="lead">Geld pro Monat für Klamotten, Friseur, Geschenke und alles, was nicht jede Woche anfällt. Es geht nicht von deinem Wochengeld ab.</p>
+      <div class="obbuf obbuf-page">
         <div class="chips" style="flex-wrap:wrap;overflow:visible">${[[0, 'Nein danke'], [25, '25 €'], [50, '50 €'], [100, '100 €']].map(([v, l]) => `<button class="chip press ${(+d.buffer || 0) === v ? 'on' : ''}" data-act="ob-buf" data-v="${v}">${l}</button>`).join('')}</div>
         <label class="fld"><span>Oder eigener Betrag pro Monat</span><div class="money"><input class="field num" id="ob-buf" data-ob="buffer" inputmode="decimal" value="${+d.buffer ? fmtIn(d.buffer) : ''}" placeholder="0"></div></label></div>`;
-  if (step === 3) { const inc = (+d.income || 0) + sum(d.incomes); return `<h2>Wofür sparst du?</h2><p class="lead">Ein Ziel motiviert. Leer lassen ist auch okay.</p>
+  if (step === 6) { const inc = (+d.income || 0) + sum(d.incomes); return `<h2>Wofür sparst du?</h2><p class="lead">Ein Ziel motiviert. Leer lassen ist auch okay.</p>
       <div class="sugg" style="margin-bottom:14px">${[['Sneaker', 150], ['Konzert', 90], ['Urlaub', 800], ['Führerschein', 3000], ['Auto', 15000]].map(([n, v]) => `<button class="chip press ${d.goal.name === n ? 'on' : ''}" data-obgoal="${n}|${v}">${esc(n)}</button>`).join('')}</div>
       <div class="two" style="margin-bottom:22px">
         <label class="fld"><span>Ziel</span><input class="field" id="ob-gname" data-obg="name" value="${esc(d.goal.name === 'Mein Sparziel' ? '' : d.goal.name)}" placeholder="z. B. Auto"></label>
@@ -4143,7 +4214,7 @@ function obStep() {
       </div>
       <p class="tip" id="ob-dur" style="${obDur(d) ? '' : 'display:none'}">${ic('target')}<span>${obDur(d)}</span></p>`; }
   const c = obCalc(d), H = hz(c);
-  return `<h2>Fertig! So viel kannst du ${H.pay ? 'bis zum Zahltag' : 'diese Woche'} ausgeben.</h2>
+  return `<h2>Fertig${(d.name || '').trim() ? `, ${esc(d.name.trim())}` : ''}! So viel kannst du ${H.pay ? 'bis zum Zahltag' : 'diese Woche'} ausgeben.</h2>
     <div class="result-card"><div class="holo"></div>
       <div class="label">${H.Lbl} (${H.days} ${H.days === 1 ? 'Tag' : 'Tage'})</div>
       <div class="big">${odo('obw', H.left, 'split')}</div>
@@ -4171,9 +4242,9 @@ function renderOb() {
   S.first = true; animate(root); S.first = false;
   if (step === OB_STEPS - 1 && obCalc(S.ob.d).fun > 0) setTimeout(() => { const r = $('.result-card')?.getBoundingClientRect(); if (r) burst(r.left + r.width / 2, r.top + 30, { n: 80, power: 12, lift: 5 }); buzz(20); }, 650);
   const f = $('.ob-body input:not([type=range])');
-  if (f && (step === 1 || step === 3) && !('ontouchstart' in window)) setTimeout(() => { const a = document.activeElement; if (f.isConnected && (!a || a === document.body || a.tagName === 'BUTTON')) f.focus({ preventScroll: true }); }, 380);
+  if (f && (step === 1 || step === 2 || step === 6) && !('ontouchstart' in window)) setTimeout(() => { const a = document.activeElement; if (f.isConnected && (!a || a === document.body || a.tagName === 'BUTTON')) f.focus({ preventScroll: true }); }, 380);
 }
-function obCanNext() { const { step, d } = S.ob; if (step === 1) return (numIn(d.income) + sum(d.incomes)) > 0; if (step === OB_STEPS - 1) return obCalc(d).fun > 0; return true; }
+function obCanNext() { const { step, d } = S.ob; if (step === 2) return (numIn(d.income) + sum(d.incomes)) > 0; if (step === OB_STEPS - 1) return obCalc(d).fun > 0; return true; }
 function obNext() {
   if (!obCanNext()) return;
   buzz(8);
@@ -4237,6 +4308,9 @@ document.addEventListener('click', e => {
     case 'zero': return markZero();
     case 'details': return toggleSection('details');
     case 'impsheet': return openImport();
+    case 'bal': return openBal();
+    case 'bal-tg': { const s = S.sheet; if (!s || s.mode !== 'bal') return; s.off = s.off || {}; s.off[ds.v] = !s.off[ds.v]; buzz(5); const y = $('#sheet').scrollTop; drawSheet(); $('#sheet').scrollTop = y; return; }
+    case 'bal-save': return saveBal();
     case 'say': return openSay('', true);
     case 'say-del': { const s2 = S.sheet; if (!s2 || s2.mode !== 'say') return; s2.items.splice(+ds.k, 1); s2.ov = {}; s2.src = s2.src || 'del'; s2.aiText = s2.text; buzz(8); return updSay(true); }
     case 'imp-del': { if (!S.imp) return; S.imp.items.splice(+ds.k, 1); buzz(8); if (!S.imp.items.length) { S.imp = null; closeSheet(); toast('Nichts übernommen'); return render(); } return drawImpReview(); }
@@ -4323,6 +4397,7 @@ function setPath(o, path, v) { const ks = path.split('.'); let x = o; while (ks.
 document.addEventListener('input', e => {
   const el = e.target; const ds = el.dataset;
   if (el.id === 'saytext') return updSay();
+  if (el.id === 'bal-in') return balUpd();
   if (el.id === 'remind-at') { S.settings.flags.remindAt = el.value || (NATIVE ? '20:00' : '20:30'); Store.saveSettings(); if (NATIVE && S.rem === 'on') { const [h, m] = remindTime(); NATIVE.setReminder(true, h, m); } const a = el.closest('.remind') && el.closest('.remind').querySelector('a.btn'); if (a) a.href = gcalURL(); return; }
   if (ds.sayamt !== undefined && S.sheet && S.sheet.mode === 'say') { const x = S.sheet.items[+ds.sayamt]; const v = r2(numIn(el.value)); if (x && v > 0) { x.amount = v; x.total = r2(v * (x.split || 1)); S.sheet.src = S.sheet.src || 'edit'; S.sheet.aiText = S.sheet.text; } return; }
   if (el.type === 'range') rangeFill(el);
@@ -4366,7 +4441,7 @@ document.addEventListener('keydown', e => {
     if (e.target.id === 'note') { if (e.key === 'Enter') { e.preventDefault(); saveExpense(); } return; }
     if (e.target.dataset && e.target.dataset.sayamt !== undefined) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } return; }
     if (e.target.id === 'saytext') { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (S.sheet && S.sheet.think && S.sheet.think.kind === 'ask') sayAskNext(); else if (S.sheet && !(S.sheet.text || '').trim() && (S.sheet.log || []).length) e.target.blur(); else saySave(); } else if (e.key === 'Escape') closeSheet(); return; }
-    if (S.sheet.mode === 'imp' || S.sheet.mode === 'impchoose' || S.sheet.mode === 'badges' || S.sheet.mode === 'say') { if (e.key === 'Escape') closeSheet(); return; }
+    if (S.sheet.mode === 'imp' || S.sheet.mode === 'impchoose' || S.sheet.mode === 'badges' || S.sheet.mode === 'say' || S.sheet.mode === 'bal') { if (e.key === 'Escape') closeSheet(); else if (e.key === 'Enter' && S.sheet.mode === 'bal') saveBal(); return; }
     if (/^[0-9]$/.test(e.key)) { key(e.key); e.preventDefault(); }
     else if (e.key === ',' || e.key === '.') { key(','); e.preventDefault(); }
     else if (e.key === 'Backspace') { key('b'); e.preventDefault(); }
