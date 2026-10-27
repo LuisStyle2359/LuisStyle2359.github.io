@@ -1439,13 +1439,21 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 
 .bal-parts{display:grid;gap:8px;margin-top:14px}
 .bal-parts .bal-h{font-size:13px;color:var(--ink-3)}
-.bal-p{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;padding:12px 14px;border-radius:16px;background:var(--surface-2,#232126);color:var(--ink-3);text-align:left;font-size:14.5px}
-.bal-p i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.06)}
-.bal-p i svg{width:14px;height:14px}
-.bal-p span{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.25)}
-.bal-p.on{color:var(--ink)}
-.bal-p.on span{text-decoration:none}
-.bal-p.on i{background:rgba(214,194,154,.22);color:#E6CF9C}
+.bal-p{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;padding:11px 14px;border-radius:16px;background:var(--surface-2,#232126);color:var(--ink);text-align:left;font-size:14.5px}
+.bal-p i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.07);color:var(--ink-3)}
+.bal-p i svg{width:15px;height:15px}
+.bal-p span{display:grid;gap:1px}
+.bal-p small{font-size:12px;color:var(--ink-4)}
+.bal-p.paid{color:var(--ink-3)}
+.bal-p.paid b{text-decoration:line-through;text-decoration-color:rgba(255,255,255,.3)}
+.bal-p.paid i{background:rgba(143,203,155,.18);color:var(--ok)}
+.bal-p.paid small{color:var(--ok)}
+.bal-res .bal-gap,.bal-res .bal-tip{display:block;margin-top:10px;color:var(--ink-2)}
+.bal-res .bal-tip{color:var(--ink-3);font-size:13.5px}
+.bal-forgot{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:11px 14px;border-radius:14px;background:var(--surface-2,#232126);color:var(--ink);font-size:14px;text-align:left}
+.bal-forgot i{display:grid;place-items:center;width:22px;height:22px;border-radius:7px;background:rgba(255,255,255,.08)}
+.bal-forgot i svg{width:14px;height:14px}
+.bal-forgot.on i{background:rgba(214,194,154,.3);color:#E6CF9C}
 .bal-res{margin:14px 2px 0;font-size:14.5px;line-height:1.45;color:var(--ink-2)}
 .bal-res b{color:var(--ink)}
 .balc .bal-last{margin-top:6px}
@@ -1521,6 +1529,7 @@ window.__budgieBack = () => {
 const P = {
   lock: 'M7.5 11V8.2a4.5 4.5 0 0 1 9 0V11M6 11h12v9H6z',
   bell: 'M6 9.5a6 6 0 0 1 12 0c0 5.5 2.5 7.5 2.5 7.5h-17S6 15 6 9.5M10 20.5a2.2 2.2 0 0 0 4 0',
+  clock: 'M12 7.5V12l3 2M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 0 0 0-17z',
   calendar: 'M7 3v3M17 3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z',
   stop: 'M7.5 7.5h9v9h-9z',
   mic: 'M12 3a3 3 0 0 0-3 3v5a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6',
@@ -1740,7 +1749,7 @@ function calc(ref = today()) {
   const daysLeftWeek = 7 - dayIdx;
   const perDaysLeft = Math.max(1, dayDiff(ref, per.end));
   const payInWeek = per.end < we, perDayPer = funLeft / perDaysLeft;
-  const perDayToPay = payInWeek && perDayPer < weekLeft / daysLeftWeek;
+  const perDayToPay = payInWeek;
   const perDay = Math.max(0, perDayToPay ? perDayPer : weekLeft / daysLeftWeek);
   const refS = iso(ref), spentToday = sum(items.filter(i => isFun(i) && !i._plan && i.date === refS));
   const dayBase = Math.max(0, perDayToPay ? (funLeft + spentToday) / perDaysLeft : (weekLeft + spentToday) / daysLeftWeek);
@@ -2212,7 +2221,7 @@ function homeView() {
       <div class="row-btns">${open.length === 1 ? `<button class="btn sm press" data-act="owed-back" data-v="${esc(o.id)}">Bezahlt</button><a class="btn sm ghost press" href="${esc(waURL(o, o.names && o.names[persons(o).indexOf(open[0])]))}" target="_blank" rel="noopener">${ic('msg')} Erinnern</a>` : `<button class="btn sm press" data-tab="hist">Ansehen</button>`}`; })()}<button class="btn sm ghost press" data-act="owed-later" aria-label="Später erinnern">${ic('x')}</button></div>
     </section>`; },
     credit: () => `<section ${ri('card mini')}>
-      <p><b>Zahltag! ${esc(eur0(+st.etf))} für „${esc(g.name)}“ ${setupPer ? 'diesen Monat schon' : ''} zur Seite gelegt?</b> Dann trägt Budgie es als gespart ein.${g.auto ? ' Ab dem nächsten Zahltag automatisch.' : ''}</p>
+      <p><b>${dayDiff(calc().per.start, today()) <= 2 ? 'Zahltag! ' : 'Diesen Monat schon '}${esc(eur0(+st.etf))} für „${esc(g.name)}“ ${setupPer && dayDiff(calc().per.start, today()) <= 2 ? 'diesen Monat schon' : ''} zur Seite gelegt?</b> Dann trägt Budgie es als gespart ein.${g.auto ? ' Ab dem nächsten Zahltag automatisch.' : ''}</p>
       <div class="row-btns"><button class="btn sm press" data-act="credit">Ja, eintragen</button><button class="btn sm ghost press" data-act="credit-skip">Noch nicht</button></div>
     </section>`,
     recap: () => `<section ${ri('card mini')}>
@@ -2684,7 +2693,7 @@ function openImpReview() {
 function openSheet(edit, mode) {
   S.sheet = edit
     ? { mode: 'edit', id: edit.id, type: isIn(edit) ? 'in' : 'out', amt: String(r2(edit.total || edit.amount)).replace('.', ','), cat: edit.cat, note: edit.note || '', date: edit.date, split: edit.split || 1, spread: !!edit.spread, showNote: !!edit.note, names: (edit.names || []).join(', ') }
-    : { mode: mode || 'new', type: 'out', amt: '0', cat: defaultCat(), note: '', date: iso(today()), split: 1, spread: false };
+    : { mode: mode || 'new', type: 'out', amt: '0', cat: mode === 'check' ? 'sonst' : defaultCat(), note: '', date: iso(today()), split: 1, spread: false };
   drawSheet(); buzz(8);
   $('#fab')?.classList.add('on');
   requestAnimationFrame(() => { veilOn(); $('#sheet').classList.add('on'); });
@@ -3690,35 +3699,38 @@ function parseSay(raw) {
   const inWords = /\b(bekommen|gekriegt|kriegt|krieg|erhalten|verdient|eingenommen|reingekommen|gehalt|lohn|taschengeld|trinkgeld|pfand|zurückbekommen|zurückgekriegt|wiederbekommen|wiedergekriegt|hat mir|haben mir|gab mir|gibt mir|verkauft|vertickt|verscherbelt|erstattet|cashback|ausgezahlt|gefunden|gewonnen|zurückgezahlt bekommen|bafög|bafoeg|kindergeld|stipendium|wohngeld|gepaypalt|getwintet|rückerstattung|erstattung|zurückerstattet|gutschrift|eingelöst|eingang|zahlungseingang|babysitten|gebabysittet|babysitting|gekellnert|gejobbt|nachhilfe gegeben|gutgeschrieben)\b|gehalt\b|vergütung\b|rückzahlung|\bpfand|\b(ist|sind) (endlich |jetzt |schon |heute )?(gekommen|da|angekommen|eingegangen|drauf)\b|\b(kunde|kundin|client|auftraggeber)\b.*\b(bezahlt|gezahlt|überwiesen|geschickt)\b|\brechnung (wurde |ist )?(bezahlt|beglichen)\b|\bhonorar\b|\b(ist|sind|kam|kamen) (drauf|rein|eingegangen)\b|\b(oma|opa|mama|papa|mutter|vater|eltern|tante|onkel|chef|chefin|[a-zäöüß]{3,12}) (hat|haben)\b[^,;]*(überwiesen|geschickt|gegeben|geschenkt|zurückgezahlt|zurückgegeben)|\bmir\b.*(geschenkt|überwiesen|gegeben|zurückgezahlt|zurückgegeben|geschickt)/;
   const dStart = out.findIndex((o, k) => k > 0 && /^\s*(?:am |letzten |vergangenen )?(gestern|vorgestern|heute|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag)\b|^\s*am \d{1,2}\./.test(o.txt));
   let lastD = null, prevInc = false; const made = [];
+  const SPLW = /\b(geteilt|teilen|teilten|teile|teilt|aufgeteilt|gesplittet|split)\b|\bzu\s*(zweit|dritt|viert|fünft|sechst)\b|\bdurch\s*\d|\bhalbe[ -]?halbe\b|\bhälfte\b|\balleine?\b|\bselbst\b|\bjede[rs]?\b|\bpro (person|kopf|nase)\b|\bmit\b|\bfür\b/;
+  const tailM = out.length > 1 ? out[out.length - 1].txt.match(/\s((?:mit\s+[a-zäöüß ,&]+?\s+)?(?:geteilt|aufgeteilt|gesplittet)(?:\s+mit\s+[a-zäöüß ,&]+)?|zu\s*(?:zweit|dritt|viert|fünft|sechst)|durch\s*\d{1,2}|halbe[ -]?halbe)\s*[.!]?$/) : null;
+  const shareTail = tailM && !/\b(danach|dann|später|nachher|alleine?|selbst|bekommen|gekriegt|zurück)\b/.test(whole) && out.slice(0, -1).every(o => !SPLW.test(o.txt)) ? tailM[1] : '';
   return out.map((seg, segK) => {
-    const p = seg.txt, a = seg.a, ac = a.filter(x => x.cur), at = a.filter(x => x.tail);
+    const p = seg.txt, ps = shareTail && segK < out.length - 1 ? p + ' ' + shareTail : p, a = seg.a, ac = a.filter(x => x.cur), at = a.filter(x => x.tail);
     const dec = a.filter(x => !Number.isInteger(x.n));
     const val = ac.length ? ac[0].n : at.length ? at[at.length - 1].n : dec.length ? dec[dec.length - 1].n : Math.max(...a.map(x => x.n));
     let people = 1, m;
-    if ((m = p.match(/(?:geteilt\s*)?durch\s*(\d{1,2})\b/))) people = +m[1];
-    else if ((m = p.match(/\bzu\s*(zweit|dritt|viert|fünft|sechst)\b/))) people = { zweit: 2, dritt: 3, viert: 4, fünft: 5, sechst: 6 }[m[1]];
-    else if (/halbe[ -]?halbe|hälfte|geteilt mit (?:einem|einer|meinem|meiner|\w+)$/.test(p)) people = 2;
-    else if ((m = p.match(/mit\s*(\d)\s*(?:anderen|leuten|freunden|freundinnen|kumpels)/))) people = +m[1] + 1;
-    else if ((m = p.match(/\bfür (\d{1,2}) (leute|personen|leuten|freunde|freunden)\b/))) people = Math.min(20, +m[1]);
-    else if ((m = p.match(/\b(?:für uns|wir) (beide|zwei|drei|vier|fünf|sechs|2|3|4|5|6)\b/))) people = { beide: 2, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6 }[m[1]] || +m[1];
+    if ((m = ps.match(/(?:geteilt\s*)?durch\s*(\d{1,2})\b/))) people = +m[1];
+    else if ((m = ps.match(/\bzu\s*(zweit|dritt|viert|fünft|sechst)\b/))) people = { zweit: 2, dritt: 3, viert: 4, fünft: 5, sechst: 6 }[m[1]];
+    else if (/halbe[ -]?halbe|hälfte|geteilt mit (?:einem|einer|meinem|meiner|\w+)$/.test(ps)) people = 2;
+    else if ((m = ps.match(/mit\s*(\d)\s*(?:anderen|leuten|freunden|freundinnen|kumpels)/))) people = +m[1] + 1;
+    else if ((m = ps.match(/\bfür (\d{1,2}) (leute|personen|leuten|freunde|freunden)\b/))) people = Math.min(20, +m[1]);
+    else if ((m = ps.match(/\b(?:für uns|wir) (beide|zwei|drei|vier|fünf|sechs|2|3|4|5|6)\b/))) people = { beide: 2, zwei: 2, drei: 3, vier: 4, fünf: 5, sechs: 6 }[m[1]] || +m[1];
     let names = [];
-    if (people === 1 && /\bmit ?bezahlt\b|\bausgelegt\b|\bfür (?:[a-zäöüß]{2,15})(?:\s*(?:,|und)\s*[a-zäöüß]{2,15})* mit\b/.test(p)) { const fm = p.match(/\bfür\s+([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15}){0,6})/); names = fm ? fm[1].split(/\s*(?:,|\bund\b)\s*/).filter(w => w && !SAY_NOTNAME.test(w) && !SAY_FILL.test(w) && !sayLex(w) && !/^\d/.test(w)).map(sayCap) : []; if (/\bfür uns\b|\bfür alle\b/.test(p) && !names.length) names = []; people = names.length ? names.length + 1 : 2; }
-    if (people === 1 && /\bschuldet mir\b/.test(p) && /\b(hälfte|halbe|halben)\b/.test(p)) { const nm = p.match(/^\s*([a-zäöüß]{2,15})\s+schuldet/); names = nm && !SAY_NOTNAME.test(nm[1]) ? [sayCap(nm[1])] : []; people = 2; }
+    if (people === 1 && /\bmit ?bezahlt\b|\bausgelegt\b|\bfür (?:[a-zäöüß]{2,15})(?:\s*(?:,|und)\s*[a-zäöüß]{2,15})* mit\b/.test(ps)) { const fm = ps.match(/\bfür\s+([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15}){0,6})/); names = fm ? fm[1].split(/\s*(?:,|\bund\b)\s*/).filter(w => w && !SAY_NOTNAME.test(w) && !SAY_FILL.test(w) && !sayLex(w) && !/^\d/.test(w)).map(sayCap) : []; if (/\bfür uns\b|\bfür alle\b/.test(ps) && !names.length) names = []; people = names.length ? names.length + 1 : 2; }
+    if (people === 1 && /\bschuldet mir\b/.test(ps) && /\b(hälfte|halbe|halben)\b/.test(ps)) { const nm = ps.match(/^\s*([a-zäöüß]{2,15})\s+schuldet/); names = nm && !SAY_NOTNAME.test(nm[1]) ? [sayCap(nm[1])] : []; people = 2; }
     if (people === 1) {
-      const fr = p.match(/\b(hälfte|halbe|drittel|viertel|fünftel)\b/), paidBoth = /\bbeide (tickets|karten)\b.*\b(gezahlt|bezahlt|übernommen|spendiert)\b|\b(gezahlt|bezahlt|übernommen|spendiert)\b.*\bbeide (tickets|karten)\b/.test(p) && !/\b(gibt|gibst|zurück|schuldet|hälfte|teilen|geteilt)\b/.test(p), repay = !paidBoth && ( /\b(gibt|gibst|geben|zahlt|zahlen|überweist|überweisen|schickt|schicken)('s| es)? mir\b/.test(p) || /\bbeide (tickets|karten|getränke)\b|\bfür (mich und|uns beide)\b/.test(p));
-      if (repay || (fr && /\bmir\b/.test(p))) {
-        const nm1 = p.match(/\bfür mich und ([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15})*)/), nm2 = p.match(/\b([a-zäöüß]{2,15}(?:\s*(?:,|und)?\s*[a-zäöüß]{2,15}){0,6})\s+(?:gibt|gibst|geben|zahlt|zahlen|überweist|überweisen|schickt|schicken)(?:'s| es)? mir\b/);
+      const fr = ps.match(/\b(hälfte|halbe|drittel|viertel|fünftel)\b/), paidBoth = /\bbeide (tickets|karten)\b.*\b(gezahlt|bezahlt|übernommen|spendiert)\b|\b(gezahlt|bezahlt|übernommen|spendiert)\b.*\bbeide (tickets|karten)\b/.test(ps) && !/\b(gibt|gibst|zurück|schuldet|hälfte|teilen|geteilt)\b/.test(ps), repay = !paidBoth && ( /\b(gibt|gibst|geben|zahlt|zahlen|überweist|überweisen|schickt|schicken)('s| es)? mir\b/.test(ps) || /\bbeide (tickets|karten|getränke)\b|\bfür (mich und|uns beide)\b/.test(ps));
+      if (repay || (fr && /\bmir\b/.test(ps))) {
+        const nm1 = ps.match(/\bfür mich und ([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15})*)/), nm2 = ps.match(/\b([a-zäöüß]{2,15}(?:\s*(?:,|und)?\s*[a-zäöüß]{2,15}){0,6})\s+(?:gibt|gibst|geben|zahlt|zahlen|überweist|überweisen|schickt|schicken)(?:'s| es)? mir\b/);
         names = (nm1 ? nm1[1] : nm2 ? nm2[1] : '').split(/\s*(?:,|\bund\b|\s)\s*/).filter(w => w && !SAY_NOTNAME.test(w) && !SAY_FILL.test(w) && !sayLex(w) && !/^(sie|er|die|der|ihr|es|man)$/.test(w) && !/^\d/.test(w)).map(sayCap);
-        if (!names.length) names = sayNames(p);
+        if (!names.length) names = sayNames(ps);
         const fn = fr ? { hälfte: 2, halbe: 2, drittel: 3, viertel: 4, fünftel: 5 }[fr[1]] : 0;
         people = Math.max(fn, names.length + 1, 2);
       }
     }
-    if (/\bjede[rs]?\b.*\b(gezahlt|bezahlt|zahlt|zahlte|selbst)\b|\bjeder für sich\b|\bselbst (bezahlt|gezahlt)\b|\bnur (meinen|mein) (teil|anteil)\b|\bpro (person|kopf|nase)\b/.test(p)) { people = 1; names = []; }
-    const myShare = people > 1 && /\bmein (anteil|teil)\b/.test(p);
-    if (people === 2 && /\bfür (uns beide|uns zwei|beide)\b/.test(p) && /\b(bezahlt|gezahlt|übernommen|ausgegeben|eingeladen|spendiert|ausgegeben)\b/.test(p) && !/\b(geteilt|teilen|teile|hälfte|zurück|gibt|gibst|zahlt|schuldet)\b/.test(p)) { people = 1; names = []; }
-    if (people === 1 && /\b(geteilt|teilen|teilten|teile|teilt|aufgeteilt|split|gesplittet|halbe-halbe|teil ich|teil mir)\b/.test(p) && !/\bpro (person|kopf|nase)\b/.test(p)) { names = sayNames(p); if (!names.length) { const fm = whole.match(/\bfür ([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15}){0,6})\s*(?:,|und)\s*mich\b/); if (fm) names = fm[1].split(/\s*(?:,|\bund\b)\s*/).filter(w => w && !SAY_NOTNAME.test(w) && !SAY_FILL.test(w) && !sayLex(w)).map(sayCap); } people = names.length ? names.length + 1 : 2; }
-    else if (people > 1) { names = sayNames(p).slice(0, people - 1); }
+    if (/\bjede[rs]?\b.*\b(gezahlt|bezahlt|zahlt|zahlte|selbst)\b|\bjeder für sich\b|\bselbst (bezahlt|gezahlt)\b|\bnur (meinen|mein) (teil|anteil)\b|\bpro (person|kopf|nase)\b/.test(ps)) { people = 1; names = []; }
+    const myShare = people > 1 && /\bmein (anteil|teil)\b/.test(ps);
+    if (people === 2 && /\bfür (uns beide|uns zwei|beide)\b/.test(ps) && /\b(bezahlt|gezahlt|übernommen|ausgegeben|eingeladen|spendiert|ausgegeben)\b/.test(ps) && !/\b(geteilt|teilen|teile|hälfte|zurück|gibt|gibst|zahlt|schuldet)\b/.test(ps)) { people = 1; names = []; }
+    if (people === 1 && /\b(geteilt|teilen|teilten|teile|teilt|aufgeteilt|split|gesplittet|halbe-halbe|teil ich|teil mir)\b/.test(ps) && !/\bpro (person|kopf|nase)\b/.test(ps)) { names = sayNames(ps); if (!names.length) { const fm = whole.match(/\bfür ([a-zäöüß]{2,15}(?:\s*(?:,|und)\s*[a-zäöüß]{2,15}){0,6})\s*(?:,|und)\s*mich\b/); if (fm) names = fm[1].split(/\s*(?:,|\bund\b)\s*/).filter(w => w && !SAY_NOTNAME.test(w) && !SAY_FILL.test(w) && !sayLex(w)).map(sayCap); } people = names.length ? names.length + 1 : 2; }
+    else if (people > 1) { names = sayNames(ps).slice(0, people - 1); }
     const owe = /\b(gibt|gibst|geben|zahlt|zahlen|überweist|überweisen|schickt|schicken)('s| es)? mir\b.*\b(hälfte|drittel|viertel|anteil|teil|zurück)\b|\b(gibt|zahlt|überweist)('s| es)? mir\s*$|\bbeide (tickets|karten)\b/.test(p) && !/\b(bekommen|überwiesen|geschickt|zurückgezahlt|erhalten)\b/.test(p);
     const inc = !owe && ((prevInc && /^\s*(?:und\s+)?(?:von\s+)?(oma|opa|mama|papa|mutter|vater|tante|onkel|[a-zäöüß]{3,12})\s+\d+(?:[.,]\d+)?\s*(?:euro)?\s*(?:dazu|auch|noch)?\s*$/.test(p) && !sayLexFind(p)) || inWords.test(p) || /(?:^|\s)(?:echtzeit)?überweisung von\b/.test(p) || (out.length === 1 && inWords.test(whole)) || (/\b(vinted|ebay|kleinanzeigen|momox|rebuy|depop)\b/.test(whole) && /\b(verkauft|vertickt)\b/.test(whole) && !/\b(gekauft|bestellt|bezahlt|geholt|getankt|ausgegeben|gegönnt|gezahlt)\b/.test(p) && !/\b(neue[snrm]?|für)\b.*\b(geholt|gekauft)\b/.test(p)));
     let cat = '', what = '', unsure = false;
@@ -3951,11 +3963,23 @@ function balParts() {
   const bl = r2(Math.max(0, (+st.buffer || 0) - (c.bufSpent || 0))); if (bl > 0.5) parts.push({ k: 'bf', l: 'Extra-Topf, noch übrig', a: bl, on: true });
   return parts.map(p => Object.assign(p, { on: p.on !== !!(S.sheet.off || {})[p.k] }));
 }
+function balSim(Z) {
+  const st = S.settings, keep = st.bals || [], td = iso(today());
+  st.bals = keep.filter(b => b.date !== td); const d = r2(Z - calc().funLeft);
+  if (Math.abs(d) >= 0.01) st.bals = st.bals.concat([{ id: 'sim', date: td, d }]);
+  const c1 = calc(); st.bals = keep; return { d, c1, H1: hz(c1) };
+}
 function balRes() {
-  const s = S.sheet, c = calc(), raw = (s.bal || '').trim();
-  if (!raw) return { html: `Bisher rechnet Budgie bis zum Zahltag mit <b>${esc(eur(c.funLeft))}</b>.`, ok: false };
-  const B = numIn(raw) * (/^\s*[-−]/.test(raw) ? -1 : 1), due = balParts().filter(p => p.on).reduce((a, p) => a + p.a, 0), Z = r2(B - due), d = c.perDaysLeft;
-  return { Z, ok: true, html: Z >= 0 ? `Bleiben bis zum Zahltag <b>${esc(eur(Z))}</b>, also ca. <b>${esc(eur(Z / d))}</b> pro Tag für ${d} ${d === 1 ? 'Tag' : 'Tage'}. Bisher waren es ${esc(eur(c.funLeft))}.` : `Damit fehlen dir bis zum Zahltag <b>${esc(eur(-Z))}</b>. Budgie zeigt dir dann jeden Tag, wie du am besten durchkommst.` };
+  const s = S.sheet, c = calc(), H = hz(c), raw = (s.bal || '').trim();
+  if (!raw) return { html: `Gerade rechnet Budgie mit <b>${esc(eur(c.todayLeft))}</b> für heute und ${esc(eur(H.left))} ${H.lbl}.`, ok: false };
+  const B = numIn(raw) * (/^\s*[-−]/.test(raw) ? -1 : 1), due = balParts().filter(p => p.on).reduce((a, p) => a + p.a, 0), Z = r2(B - due), gap = (() => { const st = S.settings, keep = st.bals || [], td = iso(today()); st.bals = keep.filter(x => x.date !== td); const f0 = calc().funLeft; st.bals = keep; return r2(Z - f0); })();
+  const sim = balSim(Z), tl = Math.max(0, sim.c1.todayLeft), sv = (+S.settings.etf || 0) + (+S.settings.emergency || 0);
+  let h = Z >= 0 ? `Bis zum Zahltag bleiben dir <b>${esc(eur(Z))}</b>.` : `Bis zum Zahltag fehlen dir <b>${esc(eur(-Z))}</b>.`;
+  h += ` Auf deiner Karte steht dann <b>Heute noch frei: ${esc(eur(tl))}</b> (jetzt ${esc(eur(c.todayLeft))}).`;
+  if (gap < -5) h += `<span class="bal-gap">Auf deinem Konto sind ${esc(eur(-gap))} weniger, als Budgie gerechnet hat. Meistens sind das Ausgaben, die noch nicht eingetragen sind.</span><button class="bal-forgot press ${s.forgot ? 'on' : ''}" data-act="bal-forgot" aria-pressed="${!!s.forgot}"><i>${ic(s.forgot ? 'check' : 'plus', 2.4)}</i>Als „Vergessene Ausgaben“ (${esc(eur(-gap))}) eintragen</button>`;
+  else if (gap > 5) h += `<span class="bal-gap">Auf deinem Konto sind ${esc(eur(gap))} mehr, als Budgie gerechnet hat, zum Beispiel Geld, das du nicht eingetragen hast.</span>`;
+  if (sv > 0 && tl < c.todayLeft * 0.6) h += `<span class="bal-tip">Wird es knapp? Unter Budget kannst du diesen Monat weniger sparen.</span>`;
+  return { Z, gap, B, ok: true, html: h };
 }
 function drawBal() {
   const s = S.sheet, parts = balParts(), r = balRes();
@@ -3963,7 +3987,7 @@ function drawBal() {
     <div class="grab"></div>
     <div class="sheet-h"><h3>Kontostand abgleichen</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
     <label class="fld" style="margin-top:8px"><span>So viel ist gerade auf deinem Konto</span><div class="money"><input class="field num" id="bal-in" inputmode="decimal" placeholder="0" value="${esc(s.bal || '')}" autocomplete="off"></div></label>
-    ${parts.length ? `<div class="bal-parts"><span class="bal-h">Geht bis zum Zahltag noch ab? Tipp weg, was schon abgebucht ist.</span>${parts.map(p => `<button class="bal-p press ${p.on ? 'on' : ''}" data-act="bal-tg" data-v="${p.k}" aria-pressed="${p.on}"><i>${ic(p.on ? 'check' : 'x', 2.4)}</i><span>${esc(p.l)}</span><b class="num">${esc(eur(p.a))}</b></button>`).join('')}</div>` : ''}
+    ${parts.length ? `<div class="bal-parts"><span class="bal-h">Das geht bis zum Zahltag noch ab. Schon abgebucht? Dann tipp drauf.</span>${parts.map(p => `<button class="bal-p press ${p.on ? '' : 'paid'}" data-act="bal-tg" data-v="${p.k}" aria-pressed="${!p.on}"><i>${ic(p.on ? 'clock' : 'check', 2.2)}</i><span>${esc(p.l)}<small>${p.on ? 'kommt noch' : 'schon abgebucht'}</small></span><b class="num">${p.on ? '− ' : ''}${esc(eur(p.a))}</b></button>`).join('')}</div>` : ''}
     <p class="bal-res" id="bal-res">${r.html}</p>
     <div class="sheet-foot"><button class="btn press" id="balbtn" data-act="bal-save" ${r.ok ? '' : 'disabled'}>${ic('check', 2.4)} Übernehmen</button></div>`;
 }
@@ -3976,13 +4000,15 @@ function openBal() {
 }
 function saveBal() {
   const s = S.sheet; if (!s || s.mode !== 'bal') return; const r = balRes(); if (!r.ok) return;
-  const st = S.settings, before = (st.bals || []).slice(), td = iso(today()), B = numIn(s.bal) * (/^\s*[-−]/.test(s.bal) ? -1 : 1);
+  const st = S.settings, before = (st.bals || []).slice(), td = iso(today()), B = r.B;
+  let fit = null;
+  if (s.forgot && r.gap < -5) { fit = { id: rid(), amount: r2(-r.gap), cat: 'sonst', note: 'Vergessene Ausgaben', date: td, ts: Date.now(), bal: 1 }; Store.saveMonth(addItem(fit)); }
   st.bals = before.filter(b => b.date !== td);
   const d = r2(r.Z - calc().funLeft);
   if (Math.abs(d) >= 0.01) st.bals.push({ id: rid(), date: td, d, bal: r2(B), ts: Date.now() });
   else if (!st.bals.length) st.bals = [];
   Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12);
-  toast(Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.`, 'Rückgängig', () => { st.bals = before; Store.saveSettings(true); render(); });
+  toast(fit ? `Eingetragen: Vergessene Ausgaben ${eur(fit.amount)}. Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.`, 'Rückgängig', () => { st.bals = before; if (fit) { const rr = removeItem(fit.id); if (rr) Store.saveMonth(rr.key); } Store.saveSettings(true); render(); });
 }
 function drawSheet() {
   const s = S.sheet;
@@ -4004,7 +4030,7 @@ function drawSheet() {
     <div class="amt"><div class="amt-v num ${s.amt === '0' ? 'zero' : ''}" id="amtv" style="${s.type === 'in' ? 'color:var(--mint)' : ''}">${amtHTML()}</div><div class="amt-hint ${over ? 'over' : ''}" id="amth">${html ? h : esc(h)}</div>${s.type === 'out' ? '' : `<button class="spreadbtn press ${s.spread ? 'on' : ''}" data-act="spread">${ic('check', 2.2)}${s.spread ? 'Auf den Monat verteilt' : 'Auf den Monat verteilen?'}</button>`}</div>
     ${quick.length ? `<div class="quick">${quick.map((q, k) => `<button class="press ${s.qk === k ? 'armed' : ''}" data-quick="${k}">${esc(q.note || (CAT[q.cat] || CAT.sonst).short)}<span>${esc(eur(q.amount))}</span>${s.qk === k ? '<em>nochmal tippen = eintragen</em>' : ''}</button>`).join('')}</div>` : ''}
     ${chk ? `<input class="field" id="wishname" style="margin:6px 0 2px" placeholder="Was ist es? (optional, z. B. AirPods)" maxlength="40" value="${esc(s.wishName || '')}">` : ''}
-    <div class="catgrid" id="catgrid">${list.map(c => `<button class="cat press ${s.cat === c.id ? 'on' : ''}" style="--c:${ccol(c.id)}" data-cat="${c.id}">${cic(c.id)}<span>${esc(c.short)}</span></button>`).join('')}</div>
+    <div class="catgrid" id="catgrid">${list.map(c => `<button class="cat press ${s.cat === c.id && !(chk && !s.catSet) ? 'on' : ''}" style="--c:${ccol(c.id)}" data-cat="${c.id}">${cic(c.id)}<span>${esc(c.short)}</span></button>`).join('')}</div>
     <div class="cathint" id="cathint">${catHint()}</div>
     ${chk ? '' : `<div class="metachips">
         <button class="chip press ${s.date === t ? 'on' : ''}" data-date="${t}">Heute</button>
@@ -4016,7 +4042,7 @@ function drawSheet() {
       ${s.showNote || s.note ? `<input class="field" id="note" style="margin-top:8px" placeholder="${s.type === 'in' ? 'Notiz, z. B. Oma' : 'Notiz, z. B. Döner'}" maxlength="60" value="${esc(s.note)}" autocomplete="off">` : `<input type="hidden" id="note" value="">`}${s.type === 'out' && s.split > 1 ? `<input class="field" id="splitnames" style="margin-top:8px" placeholder="Mit wem? z. B. Tom, Lisa (optional)" maxlength="80" value="${esc(s.names || '')}" autocomplete="off">` : ''}`}
     <div class="keypad">${['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0', 'b'].map(k => `<button class="key num" data-key="${k}" aria-label="${k === 'b' ? 'Löschen' : k}">${k === 'b' ? ic('bksp') : k}</button>`).join('')}</div>
     <div class="sheet-foot">${chk
-      ? `<div class="row-btns"><button class="btn ghost press" data-act="wish">${ic('heart')} Merken</button><button class="btn press" data-act="buy" id="savebtn">${ic('check', 2.4)} Gekauft</button></div>`
+      ? `<div id="chkfoot">${chkFootHTML()}</div>`
       : s.mode === 'edit'
       ? `<div class="sheet-actions"><button class="btn del press" data-act="del-edit" aria-label="Eintrag löschen">${ic('del')}</button><button class="btn press" data-act="save" id="savebtn">${ic('check', 2.4)} Speichern</button></div>`
       : `<button class="btn press" data-act="save" id="savebtn">${ic('check', 2.4)} ${s.type === 'in' ? 'Geld eintragen' : 'Eintragen'}</button>`}</div>`;
@@ -4025,7 +4051,14 @@ function keepSheetText() { const s = S.sheet; if (!s) return; const n = $('#note
 const parseNames = (txt, max) => String(txt || '').split(/\s*(?:,|;|&|\bund\b)\s*/).map(x => x.trim()).filter(Boolean).slice(0, max).map(x => x.slice(0, 20));
 function splitChip() { const s = S.sheet; return s.split > 1 ? `÷${s.split} · dein Teil ${esc(eur(num(s.amt) / s.split))}` : `${ic('users')}<span>Aufteilen</span>`; }
 function splitLabel() { const s = S.sheet; return `${ic('users')}${s.split > 1 ? `Geteilt durch ${s.split} · dein Anteil ${esc(eur(num(s.amt) / s.split))}` : 'Mit Freunden teilen'}`; }
-function updHint() { const ch = $('#cathint'); if (ch) ch.innerHTML = catHint(); const [h, over, html] = sheetHint(); const el = $('#amth'); if (el) { if (html) el.innerHTML = h; else el.textContent = h; el.classList.toggle('over', over); } const sb = $('#splitbtn'); if (sb) { sb.innerHTML = splitLabel(); sb.classList.toggle('on', S.sheet.split > 1); } const sc = $('#splitchip'); if (sc) { sc.innerHTML = splitChip(); sc.classList.toggle('on', S.sheet.split > 1); } }
+function chkVerdict() { const s = S.sheet; if (!s || s.mode !== 'check' || s.amt === '0') return ''; const h = sheetHint()[0] || ''; return /verdict no/.test(h) || /lieber/.test(h) ? 'no' : /verdict (ok|mid)/.test(h) ? 'ok' : ''; }
+function chkFootHTML() {
+  const v = chkVerdict();
+  if (!v) return `<button class="btn ghost press" disabled id="savebtn" data-act="buy">Erst den Preis eintippen</button>`;
+  return v === 'ok' ? `<div class="row-btns"><button class="btn ghost press" data-act="wish">${ic('heart')} Merken</button><button class="btn press" data-act="buy" id="savebtn">${ic('check', 2.4)} Gekauft</button></div>`
+    : `<div class="row-btns"><button class="btn ghost press" data-act="buy" id="savebtn">Trotzdem gekauft</button><button class="btn press" data-act="wish">${ic('heart')} Merken</button></div>`;
+}
+function updHint() { if (S.sheet && S.sheet.mode === 'check') { const f = $('#chkfoot'); if (f) { const nv = chkVerdict(); if (f.dataset.v !== nv) { f.dataset.v = nv; f.innerHTML = chkFootHTML(); } } } const ch = $('#cathint'); if (ch) ch.innerHTML = catHint(); const [h, over, html] = sheetHint(); const el = $('#amth'); if (el) { if (html) el.innerHTML = h; else el.textContent = h; el.classList.toggle('over', over); } const sb = $('#splitbtn'); if (sb) { sb.innerHTML = splitLabel(); sb.classList.toggle('on', S.sheet.split > 1); } const sc = $('#splitchip'); if (sc) { sc.innerHTML = splitChip(); sc.classList.toggle('on', S.sheet.split > 1); } }
 function updAmt(bump) {
   const el = $('#amtv'); if (!el) return;
   el.innerHTML = amtHTML(); el.classList.toggle('zero', S.sheet.amt === '0');
@@ -4271,7 +4304,7 @@ document.addEventListener('click', e => {
   if (ds.key) return key(ds.key);
   if (ds.type && S.sheet) { if (S.sheet.type !== ds.type) { keepSheetText(); S.sheet.type = ds.type; S.sheet.cat = (ds.type === 'in' ? INCATS : CATS)[0].id; drawSheet(); buzz(5); } return; }
   if (ds.quick && S.sheet) { const k = +ds.quick, q = S.quick[k]; if (q) { if (S.sheet.qk === k && r2(num(S.sheet.amt)) === r2(q.amount) && S.sheet.cat === q.cat) { S.sheet.note = q.note || ''; return saveExpense(); } S.sheet.amt = String(r2(q.amount)).replace('.', ','); S.sheet.cat = q.cat; S.sheet.note = q.note; S.sheet.qk = k; drawSheet(); updAmt(true); } return; }
-  if (ds.cat) { S.sheet.cat = ds.cat; $$('#catgrid .cat').forEach(c => c.classList.toggle('on', c.dataset.cat === ds.cat)); buzz(5); updHint(); return; }
+  if (ds.cat) { S.sheet.cat = ds.cat; S.sheet.catSet = true; $$('#catgrid .cat').forEach(c => c.classList.toggle('on', c.dataset.cat === ds.cat)); buzz(5); updHint(); return; }
   if (ds.date) { keepSheetText(); S.sheet.date = ds.date; drawSheet(); return; }
   if (ds.filter) { S.filter = ds.filter; render(); return; }
   if (ds.del) { e.stopPropagation(); return animDelete(ds.del); }
@@ -4311,6 +4344,7 @@ document.addEventListener('click', e => {
     case 'bal': return openBal();
     case 'bal-tg': { const s = S.sheet; if (!s || s.mode !== 'bal') return; s.off = s.off || {}; s.off[ds.v] = !s.off[ds.v]; buzz(5); const y = $('#sheet').scrollTop; drawSheet(); $('#sheet').scrollTop = y; return; }
     case 'bal-save': return saveBal();
+    case 'bal-forgot': { const s = S.sheet; if (!s || s.mode !== 'bal') return; s.forgot = !s.forgot; buzz(5); const o = $('#bal-res'); if (o) o.innerHTML = balRes().html; return; }
     case 'say': return openSay('', true);
     case 'say-del': { const s2 = S.sheet; if (!s2 || s2.mode !== 'say') return; s2.items.splice(+ds.k, 1); s2.ov = {}; s2.src = s2.src || 'del'; s2.aiText = s2.text; buzz(8); return updSay(true); }
     case 'imp-del': { if (!S.imp) return; S.imp.items.splice(+ds.k, 1); buzz(8); if (!S.imp.items.length) { S.imp = null; closeSheet(); toast('Nichts übernommen'); return render(); } return drawImpReview(); }
