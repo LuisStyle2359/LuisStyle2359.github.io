@@ -1486,6 +1486,11 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 .g2-src button.on{box-shadow:inset 0 0 0 1.5px #D6C29A;background:rgba(214,194,154,.1)}
 .field.shake{animation:shake .4s}
 @keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
+
+.g-edit{display:inline-flex;align-items:center;gap:6px;margin-left:auto;padding:7px 12px;border-radius:99px;background:rgba(255,255,255,.06);color:var(--ink-2);font-size:13px;font-weight:600}
+.g-edit svg{width:14px;height:14px}
+.g-delbtn{width:100%;margin-top:14px;color:var(--bad)}
+.goals2 .g2-x + .g2-x{margin-left:4px}
 </style>
 
 <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
@@ -2440,7 +2445,7 @@ function goalView() {
   <h1 class="page-title rise" style="--i:${i++}">Ziele</h1>
   <div class="stack">
     <section class="card" ${ri()}>
-      <div class="card-h"><h2>${esc(g.name || 'Mein Sparziel')}</h2></div>
+      <div class="card-h"><h2>${esc(g.name || 'Mein Sparziel')}</h2><button class="g-edit press" data-act="gform-open" aria-label="Hauptziel bearbeiten">${ic('pen')}Bearbeiten</button></div>
       <div id="ghead">${goalHead(st)}</div>
       ${+g.target > 0 ? `<label class="fld" style="margin-top:16px"><span class="small" style="color:var(--ink-2);font-weight:600">Pro Monat sparen: <b id="etf-l">${esc(eur0(+st.etf || 0))}</b></span><input type="range" id="g-etf" min="0" max="${Math.max(50, Math.round(calc().income * 0.6 / 5) * 5)}" step="5" data-bind="etf" value="${+st.etf || 0}"></label><p class="note" id="etf-d">${S.etf0 !== undefined && S.etf0 !== +st.etf ? etfDelta(st) : 'Zieh den Regler: So siehst du, wie viel schneller es geht.'}</p>` : ''}
       ${+st.etf > 0 && +g.target > 0 ? (credited ? `<div class="credited">${ic('check', 2.4)} Diesen Monat schon als gespart eingetragen</div>` : `<button class="btn press" style="margin-top:16px;height:50px;font-size:15px" data-act="credit">+ ${esc(eur0(+st.etf))} als gespart eintragen</button>`) : ''}
@@ -2452,7 +2457,7 @@ function goalView() {
     <section class="card goals2" ${ri()}>
       <div class="card-h" style="margin:0"><h2>Weitere Ziele</h2></div>
       ${(st.goals2 || []).length ? (st.goals2 || []).map(x => { const tg = +x.target || 0, sv = +x.saved || 0, pc = tg > 0 ? clamp(sv / tg, 0, 1) : 0; return `<div class="g2">
-        <div class="g2-h"><b>${esc(x.name || 'Sparziel')}</b><span class="num">${esc(eur0(sv))}${tg > 0 ? ` von ${esc(eur0(tg))}` : ''}</span><button class="g2-x press" data-act="g2-del" data-v="${esc(x.id)}" aria-label="Ziel „${esc(x.name || 'Sparziel')}“ löschen">${ic('x')}</button></div>
+        <div class="g2-h"><b>${esc(x.name || 'Sparziel')}</b><span class="num">${esc(eur0(sv))}${tg > 0 ? ` von ${esc(eur0(tg))}` : ''}</span><button class="g2-x press" data-act="g2-edit" data-v="${esc(x.id)}" aria-label="Ziel „${esc(x.name || 'Sparziel')}“ bearbeiten">${ic('pen')}</button><button class="g2-x press" data-act="g2-del" data-v="${esc(x.id)}" aria-label="Ziel „${esc(x.name || 'Sparziel')}“ löschen">${ic('x')}</button></div>
         ${tg > 0 ? `<div class="bar g2-bar"><i style="width:${(pc * 100).toFixed(1)}%"></i></div><small class="g2-s">${sv >= tg ? 'Geschafft! 🎉' : `Noch ${esc(eur0(tg - sv))} · ${Math.round(pc * 100)} %`}</small>` : ''}
         <div class="g2-a"><button class="btn sm press" data-act="g2-add" data-v="${esc(x.id)}">${ic('plus')} Geld dazulegen</button><button class="btn sm ghost press" data-act="g2-main" data-v="${esc(x.id)}">Zum Hauptziel</button></div>
       </div>`; }).join('') : `<p class="note">Sparst du noch auf etwas anderes, zum Beispiel Urlaub oder ein Konzert? Leg dafür ein eigenes Ziel an.</p>`}
@@ -2477,7 +2482,8 @@ function goalView() {
         <label class="fld"><span>Schon gespart</span><div class="money"><input class="field num" id="g-saved" inputmode="decimal" data-bind="goal.saved" value="${fmtIn(g.saved)}" placeholder="0"></div></label>
       </div>
       <label class="fld"><span>Bis wann? (optional)</span><input class="field" type="month" id="g-date" data-bind="goal.date" data-type="text" value="${esc(g.date || '')}" min="${iso(today()).slice(0, 7)}"></label>
-      <p class="note">Mit Datum sagt dir Budgie, ob du auf Kurs bist. Wie viel du pro Monat sparst, stellst du oben mit dem Regler ein.</p>` : ''}
+      <p class="note">Mit Datum sagt dir Budgie, ob du auf Kurs bist. Wie viel du pro Monat sparst, stellst du oben mit dem Regler ein.</p>
+      ${+g.target > 0 || (g.name && g.name !== 'Mein Sparziel') ? `<button class="btn ghost press g-delbtn" data-act="g-del">${ic('del')} Hauptziel löschen${(st.goals2 || []).length ? `, „${esc(st.goals2[0].name)}“ rückt nach` : ''}</button>` : ''}` : ''}
     </section>
     <section class="card form" ${ri()}>
       <div class="card-h" style="margin:0"><h2>Reserve ${tq('reserve')}</h2><span class="muted small">Ziel: 3 Monate</span></div>
@@ -4050,14 +4056,14 @@ function drawG2() {
   const s = S.sheet, x = s.mode === 'g2add' ? g2Find(s.id) : null, c = calc(), H = hz(c);
   $('#sheet').innerHTML = s.mode === 'g2new' ? `
     <div class="grab"></div>
-    <div class="sheet-h"><h3>Neues Sparziel</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
+    <div class="sheet-h"><h3>${s.edit ? 'Ziel bearbeiten' : 'Neues Sparziel'}</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
     <div class="sugg" style="margin:8px 0 6px">${[['Urlaub', 800], ['Konzert', 90], ['Sneaker', 150], ['Handy', 600], ['Führerschein', 3000]].map(([n, v]) => `<button class="chip press" data-act="g2-sug" data-v="${n}|${v}">${esc(n)}</button>`).join('')}</div>
     <label class="fld"><span>Wofür sparst du?</span><input class="field" id="g2-name" placeholder="z. B. Urlaub" maxlength="30" value="${esc(s.name || '')}" autocomplete="off"></label>
     <div class="two" style="margin-top:10px">
       <label class="fld"><span>Kostet</span><div class="money"><input class="field num" id="g2-target" inputmode="decimal" placeholder="0" value="${esc(s.target || '')}"></div></label>
       <label class="fld"><span>Schon gespart</span><div class="money"><input class="field num" id="g2-saved" inputmode="decimal" placeholder="0" value="${esc(s.saved || '')}"></div></label>
     </div>
-    <div class="sheet-foot"><button class="btn press" data-act="g2-save" id="g2btn">${ic('check', 2.4)} Ziel anlegen</button></div>` : `
+    <div class="sheet-foot"><button class="btn press" data-act="g2-save" id="g2btn">${ic('check', 2.4)} ${s.edit ? 'Speichern' : 'Ziel anlegen'}</button></div>` : `
     <div class="grab"></div>
     <div class="sheet-h"><h3>Geld für „${esc(x ? x.name : '')}“</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
     <label class="fld" style="margin-top:8px"><span>Wie viel legst du dazu?</span><div class="money"><input class="field num" id="g2-amt" inputmode="decimal" placeholder="0" value="${esc(s.amt || '')}" autocomplete="off"></div></label>
@@ -4080,6 +4086,7 @@ function saveG2() {
   if (s.mode === 'g2new') {
     const name = ($('#g2-name')?.value || '').trim(), target = r2(numIn($('#g2-target')?.value)), saved = r2(numIn($('#g2-saved')?.value));
     if (!name) { const el = $('#g2-name'); if (el) { el.focus(); el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 500); } return; }
+    if (s.edit) { const x = g2Find(s.edit); if (x) { const old = Object.assign({}, x); Object.assign(x, { name, target, saved }); Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12); toast(`„${name}“ gespeichert`, 'Rückgängig', () => { Object.assign(x, old); Store.saveSettings(true); render(); }); } return; }
     st.goals2 = (st.goals2 || []).concat([{ id: rid(), name, target, saved }]); Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12); toast(`Ziel „${name}“ angelegt`); return;
   }
   const x = g2Find(s.id), v = r2(numIn(s.amt)); if (!x || !(v > 0)) return;
@@ -4450,6 +4457,12 @@ document.addEventListener('click', e => {
     case 'imp-stop': S.impCtl?.abort(); return;
     case 'imp-text': { const v = ($('#imptext')?.value || '').trim(); if (!v) { toast('Füg zuerst deine Umsätze ein.'); return; } let r = null; try { r = importBank(v); } catch (err) { r = null; } if (r && r.items.length) { S.imp = r; return openImpReview(); } if (r && r.skipped) { toast('Alles schon eingetragen, nichts Neues gefunden.'); return; } if (S.ai) { toast('Keine Tabelle erkannt. Text zum Auslesen an Claude senden?', 'Senden', () => aiImport('text', v)); return; } toast(LOCALONLY ? 'Ich erkenne da keine Tabelle. Nimm am besten die CSV-Datei aus deiner Banking-App.' : 'Ich erkenne da keine Tabelle. Nimm die CSV-Datei oder öffne Budgie im Claude-Link.'); return; }
     case 'gform': S.gform = !S.gform; return render();
+    case 'gform-open': { S.gform = true; render(); setTimeout(() => { const el = $('#g-name'); if (el) { el.scrollIntoView({ block: 'center', behavior: RM ? 'auto' : 'smooth' }); } }, 120); buzz(5); return; }
+    case 'g-del': { const st = S.settings, g = st.goal, old = { name: g.name, target: +g.target || 0, saved: +g.saved || 0, date: g.date || '' }, list = (st.goals2 || []).slice(), nx = list[0];
+      if (nx) { g.name = nx.name; g.target = +nx.target || 0; g.saved = +nx.saved || 0; g.date = ''; st.goals2 = list.slice(1); } else { g.name = 'Mein Sparziel'; g.target = 0; g.saved = 0; g.date = ''; }
+      S.gform = false; Store.saveSettings(true); buzz(10); render();
+      toast(nx ? `„${old.name}“ gelöscht, „${nx.name}“ ist jetzt dein Hauptziel` : `„${old.name}“ gelöscht`, 'Rückgängig', () => { Object.assign(g, old); st.goals2 = list; Store.saveSettings(true); render(); }); return; }
+    case 'g2-edit': { const x = g2Find(ds.v); if (!x) return; openG2('g2new', x.id); Object.assign(S.sheet, { edit: x.id, name: x.name, target: x.target ? fmtIn(x.target) : '', saved: x.saved ? fmtIn(x.saved) : '' }); drawSheet(); return; }
     case 'res-buf': case 'res-nest': case 'res-save': return rescueMove(ds.act.slice(4), +ds.v);
     case 'ob-quick': { S.ob.d.flags.quickOpen = !S.ob.d.flags.quickOpen; t.classList.toggle('on', S.ob.d.flags.quickOpen); t.setAttribute('aria-checked', String(!!S.ob.d.flags.quickOpen)); buzz(6); return; }
     case 'auto': S.settings.goal.auto = !S.settings.goal.auto; Store.saveSettings(true); buzz(6); return render();
