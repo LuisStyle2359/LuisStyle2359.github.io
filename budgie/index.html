@@ -1465,6 +1465,27 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 .ob .ob-body .addrow{margin-bottom:28px}
 
 .bal-res .bal-math{display:block;margin-bottom:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);color:var(--ink-2);font-size:14px}
+
+.goals2 .g2{padding:14px 0;border-bottom:1px solid var(--stroke)}
+.goals2 .g2:first-of-type{padding-top:10px}
+.goals2 .g2-h{display:flex;align-items:center;gap:10px}
+.goals2 .g2-h span{margin-left:auto}
+.goals2 .g2-x{display:grid;place-items:center;width:32px;height:32px;margin:-6px -6px -6px 0;border-radius:50%;color:var(--ink-3)}
+.goals2 .g2-x svg{width:15px;height:15px}
+.goals2 .g2-h b{font-size:16px}
+.goals2 .g2-h span{color:var(--ink-2);font-size:14px}
+.goals2 .g2-bar{margin-top:10px}
+.goals2 .g2-s{display:block;margin-top:6px;color:var(--ink-3);font-size:12.5px}
+.goals2 .g2-a{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.goals2 .addrow{margin-top:12px}
+.g2-src{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.g2-src button{display:grid;gap:3px;padding:12px;border-radius:16px;background:var(--surface-2,#232126);text-align:left;color:var(--ink-2);box-shadow:inset 0 0 0 1px transparent}
+.g2-src button b{color:var(--ink);font-size:14.5px}
+.g2-src button small{font-size:12.5px;color:var(--ink-3);line-height:1.3}
+.g2-src + .note{margin-top:10px}
+.g2-src button.on{box-shadow:inset 0 0 0 1.5px #D6C29A;background:rgba(214,194,154,.1)}
+.field.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-5px)}40%,80%{transform:translateX(5px)}}
 </style>
 
 <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
@@ -1657,6 +1678,7 @@ function fixSettings(s) {
   o.incomes = Array.isArray(o.incomes) ? o.incomes : [];
   o.bals = Array.isArray(o.bals) ? o.bals.filter(b => b && b.date) : [];
   o.wishes = Array.isArray(o.wishes) ? o.wishes : [];
+  o.goals2 = Array.isArray(o.goals2) ? o.goals2.filter(g => g && g.id) : [];
   o.badges = (s && s.badges && typeof s.badges === 'object') ? s.badges : {};
   o.flags = (s && s.flags && typeof s.flags === 'object') ? s.flags : {};
   o.merch = (s && s.merch && typeof s.merch === 'object') ? s.merch : {};
@@ -2101,7 +2123,7 @@ function greet() { const h = new Date().getHours(); return h < 11 ? 'Guten Morge
 function txRow(it, j = 0, noDate) {
   const c = CAT[it.cat] || CAT.sonst; const d = parse(it.date);
   const inc = isIn(it), sw = isSweep(it);
-  const title = sw ? esc('In „' + (S.settings.goal.name || 'Sparziel') + '“ geschoben') : it.note ? esc(it.note) : esc(c.label);
+  const title = sw ? esc('In „' + ((it.g2 && g2Find(it.g2) || {}).name || (it.g2 ? 'Sparziel' : S.settings.goal.name || 'Sparziel')) + '“ geschoben') : it.note ? esc(it.note) : esc(c.label);
   const meta = `${esc(c.short)}${noDate ? '' : ` · ${WD[d.getDay()]}, ${dShort(d)}`}${it.split > 1 ? (!isIn(it) && !it.back && owedOf(it) > 0.004 && it.date <= iso(today()) ? ` · ÷${it.split} · <span class="owmark">${esc(eur0(owedOf(it)))} kommen noch</span>` : ` · geteilt ÷${it.split}${it.back ? ', zurück' : ''}`) : ''}${it.imp ? ' · Import' : ''}${it.plan && it.date > iso(today()) ? ' · <span class="planmark">geplant</span>' : ''}`;
   return `<div class="tx${S.open === it.id ? ' open' : ''}" data-tx="${esc(it.id)}" style="--j:${j}">
     <button class="tx-del" data-del="${esc(it.id)}" aria-label="Löschen">${ic('del')}Löschen</button>
@@ -2426,6 +2448,16 @@ function goalView() {
       ${+st.etf > 0 && +g.target > 0 ? `<div class="swrow" style="margin-top:16px"><span><b>Gespartes am Zahltag eintragen</b>Budgie trägt es automatisch ein, überweisen machst du selbst.</span><button class="tgl press ${g.auto ? 'on' : ''}" data-act="auto" role="switch" aria-checked="${!!g.auto}" aria-label="Am Zahltag automatisch gutschreiben"></button></div>` : ''}
       ${+g.target > 0 ? `<div class="swrow" style="margin-top:14px"><span><b>Wochenrest automatisch dazu</b>Jeden Montag, wenn es nicht knapp ist.</span><button class="tgl press ${g.autoSweep ? 'on' : ''}" data-act="autosweep" role="switch" aria-checked="${!!g.autoSweep}" aria-label="Wochenrest automatisch ins Ziel"></button></div>` : ''}
       </details>` : ''}
+    </section>
+    <section class="card goals2" ${ri()}>
+      <div class="card-h" style="margin:0"><h2>Weitere Ziele</h2></div>
+      ${(st.goals2 || []).length ? (st.goals2 || []).map(x => { const tg = +x.target || 0, sv = +x.saved || 0, pc = tg > 0 ? clamp(sv / tg, 0, 1) : 0; return `<div class="g2">
+        <div class="g2-h"><b>${esc(x.name || 'Sparziel')}</b><span class="num">${esc(eur0(sv))}${tg > 0 ? ` von ${esc(eur0(tg))}` : ''}</span><button class="g2-x press" data-act="g2-del" data-v="${esc(x.id)}" aria-label="Ziel „${esc(x.name || 'Sparziel')}“ löschen">${ic('x')}</button></div>
+        ${tg > 0 ? `<div class="bar g2-bar"><i style="width:${(pc * 100).toFixed(1)}%"></i></div><small class="g2-s">${sv >= tg ? 'Geschafft! 🎉' : `Noch ${esc(eur0(tg - sv))} · ${Math.round(pc * 100)} %`}</small>` : ''}
+        <div class="g2-a"><button class="btn sm press" data-act="g2-add" data-v="${esc(x.id)}">${ic('plus')} Geld dazulegen</button><button class="btn sm ghost press" data-act="g2-main" data-v="${esc(x.id)}">Zum Hauptziel</button></div>
+      </div>`; }).join('') : `<p class="note">Sparst du noch auf etwas anderes, zum Beispiel Urlaub oder ein Konzert? Leg dafür ein eigenes Ziel an.</p>`}
+      <button class="addrow press" data-act="g2-new">${ic('plus')} Neues Sparziel</button>
+      ${(st.goals2 || []).length ? `<p class="note">Deine ${esc(eur0(+st.etf || 0))} pro Monat gehen in „${esc(g.name || 'Mein Sparziel')}“. Für weitere Ziele legst du Geld selbst dazu.</p>` : ''}
     </section>
     <section class="card" ${ri()}>
       <button class="toggle ${S.proj ? 'on' : ''}" data-act="proj">Was daraus werden kann ${ic('chev')}</button>
@@ -4013,9 +4045,54 @@ function saveBal() {
   Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12);
   toast(fit ? `Eingetragen: Vergessene Ausgaben ${eur(fit.amount)}. ${r.Z >= 0 ? `Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : `Bis zum Zahltag fehlen dir ${eur(-r.Z)}.`}` : Math.abs(d) < 0.01 ? 'Passt schon: Budgie rechnet genau mit deinem Kontostand.' : r.Z >= 0 ? `Abgeglichen: Bis zum Zahltag hast du jetzt ${eur(r.Z)}.` : `Abgeglichen: Bis zum Zahltag fehlen dir ${eur(-r.Z)}.`, 'Rückgängig', () => { st.bals = before; if (fit) { const rr = removeItem(fit.id); if (rr) Store.saveMonth(rr.key); } Store.saveSettings(true); render(); });
 }
+function g2Find(id) { return (S.settings.goals2 || []).find(x => x.id === id); }
+function drawG2() {
+  const s = S.sheet, x = s.mode === 'g2add' ? g2Find(s.id) : null, c = calc(), H = hz(c);
+  $('#sheet').innerHTML = s.mode === 'g2new' ? `
+    <div class="grab"></div>
+    <div class="sheet-h"><h3>Neues Sparziel</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
+    <div class="sugg" style="margin:8px 0 6px">${[['Urlaub', 800], ['Konzert', 90], ['Sneaker', 150], ['Handy', 600], ['Führerschein', 3000]].map(([n, v]) => `<button class="chip press" data-act="g2-sug" data-v="${n}|${v}">${esc(n)}</button>`).join('')}</div>
+    <label class="fld"><span>Wofür sparst du?</span><input class="field" id="g2-name" placeholder="z. B. Urlaub" maxlength="30" value="${esc(s.name || '')}" autocomplete="off"></label>
+    <div class="two" style="margin-top:10px">
+      <label class="fld"><span>Kostet</span><div class="money"><input class="field num" id="g2-target" inputmode="decimal" placeholder="0" value="${esc(s.target || '')}"></div></label>
+      <label class="fld"><span>Schon gespart</span><div class="money"><input class="field num" id="g2-saved" inputmode="decimal" placeholder="0" value="${esc(s.saved || '')}"></div></label>
+    </div>
+    <div class="sheet-foot"><button class="btn press" data-act="g2-save" id="g2btn">${ic('check', 2.4)} Ziel anlegen</button></div>` : `
+    <div class="grab"></div>
+    <div class="sheet-h"><h3>Geld für „${esc(x ? x.name : '')}“</h3><button class="x press" data-act="close" aria-label="Schließen">${ic('x')}</button></div>
+    <label class="fld" style="margin-top:8px"><span>Wie viel legst du dazu?</span><div class="money"><input class="field num" id="g2-amt" inputmode="decimal" placeholder="0" value="${esc(s.amt || '')}" autocomplete="off"></div></label>
+    <div class="g2-src">
+      <button class="press ${s.fromBudget ? 'on' : ''}" data-act="g2-src" data-v="1"><b>Von meinem Geld</b><small>Geht von deinen ${esc(eur(H.left))} ${H.lbl} ab</small></button>
+      <button class="press ${s.fromBudget ? '' : 'on'}" data-act="g2-src" data-v="0"><b>Nur eintragen</b><small>Das Geld liegt schon woanders</small></button>
+    </div>
+    <p class="note" id="g2-hint">${g2Hint()}</p>
+    <div class="sheet-foot"><button class="btn press" data-act="g2-put" id="g2btn">${ic('check', 2.4)} Dazulegen</button></div>`;
+}
+function g2Hint() { const s = S.sheet, v = numIn(s.amt), c = calc(), H = hz(c); if (!(v > 0)) return 'Tipp den Betrag ein.'; return s.fromBudget ? (H.left - v >= 0 ? `Danach ${H.lbl} noch ${eur(H.left - v)} frei.` : `Damit wärst du ${H.lbl} ${eur(v - H.left)} drüber.`) : 'Zählt nicht als Ausgabe, nur als gespart.'; }
+function openG2(mode, id) {
+  if (!S.settings) return;
+  const wasOpen = !!S.sheet; S.sheet = { mode, id, fromBudget: true }; drawSheet(); buzz(8);
+  if (!wasOpen) { $('#fab')?.classList.add('on'); requestAnimationFrame(() => { veilOn(); $('#sheet').classList.add('on'); }); }
+  setTimeout(() => { const el = $(mode === 'g2new' ? '#g2-name' : '#g2-amt'); if (el) el.focus(); }, 420);
+}
+function saveG2() {
+  const s = S.sheet, st = S.settings; if (!s) return;
+  if (s.mode === 'g2new') {
+    const name = ($('#g2-name')?.value || '').trim(), target = r2(numIn($('#g2-target')?.value)), saved = r2(numIn($('#g2-saved')?.value));
+    if (!name) { const el = $('#g2-name'); if (el) { el.focus(); el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 500); } return; }
+    st.goals2 = (st.goals2 || []).concat([{ id: rid(), name, target, saved }]); Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12); toast(`Ziel „${name}“ angelegt`); return;
+  }
+  const x = g2Find(s.id), v = r2(numIn(s.amt)); if (!x || !(v > 0)) return;
+  const before = +x.saved || 0; x.saved = r2(before + v);
+  let it = null; if (s.fromBudget) { it = { id: rid(), type: 'sweep', amount: v, cat: 'sonst', note: `Für „${x.name}“`, date: iso(today()), ts: Date.now(), g2: x.id }; Store.saveMonth(addItem(it)); }
+  Store.saveSettings(true); closeSheet(); setTimeout(render, 60); buzz(12);
+  const tg = +x.target || 0;
+  toast(tg > 0 && x.saved >= tg && before < tg ? `„${x.name}“ geschafft! 🎉` : `${eur(v)} für „${x.name}“ dazugelegt`, 'Rückgängig', () => { x.saved = before; if (it) { const rr = removeItem(it.id); if (rr) Store.saveMonth(rr.key); } Store.saveSettings(true); render(); });
+}
 function drawSheet() {
   const s = S.sheet;
   if (s.mode === 'bal') return drawBal();
+  if (s.mode === 'g2new' || s.mode === 'g2add') return drawG2();
   if (s.mode === 'impchoose') return drawImpChoose();
   if (s.mode === 'say') return drawSay();
   if (s.mode === 'badges') return drawBadges();
@@ -4127,7 +4204,8 @@ function saveExpense() {
 }
 function delExpense(id, silent) {
   const it0 = findItem(id), st = S.settings, undo = [];
-  if (it0 && isSweep(it0)) { const g = st.goal, sv = +g.saved || 0, wv = it0.wk ? st.swept[it0.wk] : undefined; g.saved = r2(Math.max(0, sv - it0.amount)); if (it0.wk) delete st.swept[it0.wk]; undo.push(() => { g.saved = sv; if (it0.wk && wv !== undefined) st.swept[it0.wk] = wv; }); }
+  if (it0 && isSweep(it0) && it0.g2) { const x = g2Find(it0.g2); if (x) { const sv = +x.saved || 0; x.saved = r2(Math.max(0, sv - it0.amount)); undo.push(() => { x.saved = sv; }); } }
+  else if (it0 && isSweep(it0)) { const g = st.goal, sv = +g.saved || 0, wv = it0.wk ? st.swept[it0.wk] : undefined; g.saved = r2(Math.max(0, sv - it0.amount)); if (it0.wk) delete st.swept[it0.wk]; undo.push(() => { g.saved = sv; if (it0.wk && wv !== undefined) st.swept[it0.wk] = wv; }); }
   if (it0 && it0.move) {
     if (it0.move === 'nest' && isIn(it0)) { const nv = +st.nest.saved || 0; st.nest.saved = r2(nv + it0.amount); undo.push(() => { st.nest.saved = nv; }); }
     if (it0.move === 'save' && isIn(it0)) { const gv = +st.goal.saved || 0; st.goal.saved = r2(gv + it0.amount); undo.push(() => { st.goal.saved = gv; }); }
@@ -4345,6 +4423,16 @@ document.addEventListener('click', e => {
     case 'details': return toggleSection('details');
     case 'impsheet': return openImport();
     case 'bal': return openBal();
+    case 'g2-new': return openG2('g2new');
+    case 'g2-add': return openG2('g2add', ds.v);
+    case 'g2-sug': { const [n, v] = ds.v.split('|'); const a = $('#g2-name'), b = $('#g2-target'); if (a) a.value = n; if (b) b.value = v; buzz(5); return; }
+    case 'g2-src': { const s = S.sheet; if (!s) return; s.fromBudget = ds.v === '1'; $$('.g2-src button').forEach(b => b.classList.toggle('on', b.dataset.v === ds.v)); const h = $('#g2-hint'); if (h) h.textContent = g2Hint(); buzz(5); return; }
+    case 'g2-save': case 'g2-put': return saveG2();
+    case 'g2-main': { const st = S.settings, x = g2Find(ds.v); if (!x) return; const g = st.goal, old = { name: g.name, target: +g.target || 0, saved: +g.saved || 0 }, prev = { name: x.name, target: +x.target || 0, saved: +x.saved || 0 };
+      g.name = prev.name; g.target = prev.target; g.saved = prev.saved; x.name = old.name; x.target = old.target; x.saved = old.saved; Store.saveSettings(true); buzz(10); render();
+      toast(`„${prev.name}“ ist jetzt dein Hauptziel`, 'Rückgängig', () => { g.name = old.name; g.target = old.target; g.saved = old.saved; x.name = prev.name; x.target = prev.target; x.saved = prev.saved; Store.saveSettings(true); render(); }); return; }
+    case 'g2-del': { const st = S.settings, list = (st.goals2 || []).slice(), x = g2Find(ds.v); if (!x) return; st.goals2 = list.filter(y => y.id !== x.id); Store.saveSettings(true); buzz(8); render();
+      toast(`„${x.name}“ gelöscht`, 'Rückgängig', () => { st.goals2 = list; Store.saveSettings(true); render(); }); return; }
     case 'bal-tg': { const s = S.sheet; if (!s || s.mode !== 'bal') return; s.off = s.off || {}; s.off[ds.v] = !s.off[ds.v]; buzz(5); const y = $('#sheet').scrollTop; drawSheet(); $('#sheet').scrollTop = y; return; }
     case 'bal-save': return saveBal();
     case 'bal-forgot': { const s = S.sheet; if (!s || s.mode !== 'bal') return; s.forgot = !s.forgot; buzz(5); const o = $('#bal-res'); if (o) o.innerHTML = balRes().html; return; }
@@ -4435,6 +4523,7 @@ document.addEventListener('input', e => {
   const el = e.target; const ds = el.dataset;
   if (el.id === 'saytext') return updSay();
   if (el.id === 'bal-in') return balUpd();
+  if (el.id === 'g2-amt') { if (S.sheet) { S.sheet.amt = el.value; const h = $('#g2-hint'); if (h) h.textContent = g2Hint(); } return; }
   if (el.id === 'remind-at') { S.settings.flags.remindAt = el.value || (NATIVE ? '20:00' : '20:30'); Store.saveSettings(); if (NATIVE && S.rem === 'on') { const [h, m] = remindTime(); NATIVE.setReminder(true, h, m); } const a = el.closest('.remind') && el.closest('.remind').querySelector('a.btn'); if (a) a.href = gcalURL(); return; }
   if (ds.sayamt !== undefined && S.sheet && S.sheet.mode === 'say') { const x = S.sheet.items[+ds.sayamt]; const v = r2(numIn(el.value)); if (x && v > 0) { x.amount = v; x.total = r2(v * (x.split || 1)); S.sheet.src = S.sheet.src || 'edit'; S.sheet.aiText = S.sheet.text; } return; }
   if (el.type === 'range') rangeFill(el);
@@ -4478,7 +4567,7 @@ document.addEventListener('keydown', e => {
     if (e.target.id === 'note') { if (e.key === 'Enter') { e.preventDefault(); saveExpense(); } return; }
     if (e.target.dataset && e.target.dataset.sayamt !== undefined) { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } return; }
     if (e.target.id === 'saytext') { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (S.sheet && S.sheet.think && S.sheet.think.kind === 'ask') sayAskNext(); else if (S.sheet && !(S.sheet.text || '').trim() && (S.sheet.log || []).length) e.target.blur(); else saySave(); } else if (e.key === 'Escape') closeSheet(); return; }
-    if (S.sheet.mode === 'imp' || S.sheet.mode === 'impchoose' || S.sheet.mode === 'badges' || S.sheet.mode === 'say' || S.sheet.mode === 'bal') { if (e.key === 'Escape') closeSheet(); else if (e.key === 'Enter' && S.sheet.mode === 'bal') saveBal(); return; }
+    if (S.sheet.mode === 'imp' || S.sheet.mode === 'impchoose' || S.sheet.mode === 'badges' || S.sheet.mode === 'say' || S.sheet.mode === 'bal' || S.sheet.mode === 'g2new' || S.sheet.mode === 'g2add') { if (e.key === 'Escape') closeSheet(); else if (e.key === 'Enter' && S.sheet.mode === 'bal') saveBal(); return; }
     if (/^[0-9]$/.test(e.key)) { key(e.key); e.preventDefault(); }
     else if (e.key === ',' || e.key === '.') { key(','); e.preventDefault(); }
     else if (e.key === 'Backspace') { key('b'); e.preventDefault(); }
