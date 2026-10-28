@@ -1491,6 +1491,8 @@ html.touring #cbar{opacity:0!important;pointer-events:none}
 .g-edit svg{width:14px;height:14px}
 .g-delbtn{width:100%;margin-top:14px;color:var(--bad)}
 .goals2 .g2-x + .g2-x{margin-left:4px}
+
+html body .c3 .hero,html body .hero{overflow:hidden;overflow:clip;min-height:auto}
 </style>
 
 <div class="aurora" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i></div>
@@ -1752,10 +1754,12 @@ function calc(ref = today()) {
   const funLeft = allocP + funIn - funSpent - funSwept;
   const base = allocP + funIn - funSwept;
   const ws = weekStart(ref), we = addDays(ws, 7);
+  // payday was earlier this week: the old month is closed, its minus or rest does not move into the new month
+  const wa = (per.start > ws && per.start <= ref) ? per.start : ws;
   let adjWeek = 0, weekBudget = 0, covStart = null, baseWeek = 0, incWeek = 0, swWeek = 0, carryAll = null, carryDays = 0, carryFrom = null;
-  const periods = [periodOf(ws, Pd)]; while (periods[periods.length - 1].end < we) periods.push(periodShift(periods[periods.length - 1], Pd, 1));
+  const periods = [periodOf(wa, Pd)]; while (periods[periods.length - 1].end < we) periods.push(periodShift(periods[periods.length - 1], Pd, 1));
   periods.forEach(p => {
-    const e = effStart(p); const a = ws > e ? ws : e; const b = we < p.end ? we : p.end;
+    const e = effStart(p); const a = wa > e ? wa : e; const b = we < p.end ? we : p.end;
     if (b <= a) return;
     if (!covStart || a < covStart) covStart = a;
     if (carryAll === null) { carryAll = avail(p, a) - fun * dayDiff(a, p.end) / plen(p); carryDays = dayDiff(a, p.end); carryFrom = e; }
@@ -1766,7 +1770,7 @@ function calc(ref = today()) {
       else if (isSw(i)) { weekBudget -= i.amount; swWeek += i.amount; }
     });
   });
-  if (!covStart) covStart = ws;
+  if (!covStart) covStart = wa;
   const weekCov = Math.max(1, dayDiff(covStart, we));
   const weekItems = items.filter(i => isFun(i) && between(i, covStart, we));
   const weekIn = sum(items.filter(i => isInc(i) && !i._adj && between(i, covStart, we)));
@@ -2292,7 +2296,7 @@ function homeView() {
       ${over ? `<p class="whyp">Diese Woche hattest du <b>${esc(eur(c.weekBudget))}</b>. Ausgegeben${c.weekPlan > 0.004 ? ' oder geplant' : ''} sind schon <b>${esc(eur(c.weekSpent))}</b>, also <b>${esc(eur(-c.weekLeft))}</b> zu viel. Das verteilt sich auf die Tage bis zum Zahltag.</p>` : `<p class="whyp whyk">${H.Lbl} hast du noch <b>${esc(eur(pool))}</b> für ${nD} ${nD === 1 ? 'Tag' : 'Tage'}, also <b>${esc(eur(c.dayBase))}</b> pro Tag.${c.spentToday > 0.004 ? ` Heute schon ${esc(eur(c.spentToday))} ausgegeben, bleiben <b>${esc(eur(c.todayLeft))}</b>.` : ''}</p>
       <details class="whymore"><summary>Woher kommen die ${esc(eur(pool))}?</summary><div class="calc">
         ${H.pay ? `${row('Geld für diesen Monat', esc(eur(c.allocP)))}${c.funIn - c.adjP > 0.004 ? row('+ bekommen', esc(eur(c.funIn - c.adjP))) : ''}${Math.abs(c.adjP) > 0.004 ? row(c.adjP > 0 ? '+ Kontostand-Abgleich' : '− Kontostand-Abgleich', esc(eur(Math.abs(c.adjP)))) : ''}${row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)))}`
-        : `${row('Wochengeld', esc(eur(c.baseWeek)), '', Math.abs(c.baseWeek - c.weekly) >= 0.3 ? `im Schnitt ${eur(c.weekly)}, dieser Monat ist ${c.baseWeek < c.weekly ? 'länger' : 'kürzer'}` : '')}${Math.abs(c.carry) >= 0.5 ? row(c.carry > 0 ? `+ übrig seit dem ${cf}` : `− zu viel seit dem ${cf}`, esc(eur(Math.abs(c.carry))), '', lwl ? `davon ${eur(lwl)} letzte Woche` : '') : ''}${c.incWeek ? row('+ bekommen', esc(eur(c.incWeek))) : ''}${Math.abs(c.adjWeek) > 0.004 ? row(c.adjWeek > 0 ? '+ Kontostand-Abgleich' : '− Kontostand-Abgleich', esc(eur(Math.abs(c.adjWeek))), '', 'auf die Tage bis zum Zahltag verteilt') : ''}${c.swWeek ? row('− fürs Ziel', esc(eur(c.swWeek))) : ''}${gone > 0.004 ? row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)), '', c.weekPlan > 0.004 ? `davon ${eur(c.weekPlan)} geplant` : '') : ''}`}
+        : `${row('Wochengeld', esc(eur(c.baseWeek)), '', c.covStart > c.ws ? `nur ${dayDiff(c.covStart, c.we)} Tage, ab ${+c.covStart === +c.per.start ? 'deinem Zahltag' : 'deinem Start'}` : Math.abs(c.baseWeek - c.weekly) >= 0.3 ? `im Schnitt ${eur(c.weekly)}, dieser Monat ist ${c.baseWeek < c.weekly ? 'länger' : 'kürzer'}` : '')}${Math.abs(c.carry) >= 0.5 ? row(c.carry > 0 ? `+ übrig seit dem ${cf}` : `− zu viel seit dem ${cf}`, esc(eur(Math.abs(c.carry))), '', lwl ? `davon ${eur(lwl)} letzte Woche` : '') : ''}${c.incWeek ? row('+ bekommen', esc(eur(c.incWeek))) : ''}${Math.abs(c.adjWeek) > 0.004 ? row(c.adjWeek > 0 ? '+ Kontostand-Abgleich' : '− Kontostand-Abgleich', esc(eur(Math.abs(c.adjWeek))), '', 'auf die Tage bis zum Zahltag verteilt') : ''}${c.swWeek ? row('− fürs Ziel', esc(eur(c.swWeek))) : ''}${gone > 0.004 ? row(`− schon weg${c.weekPlan > 0.004 ? ' oder geplant' : ''}`, esc(eur(gone)), '', c.weekPlan > 0.004 ? `davon ${eur(c.weekPlan)} geplant` : '') : ''}`}
         ${row('= ab heute', esc(eur(pool)), 'tot')}
       </div></details>
       <p class="whyfoot">${H.Lbl} bleiben nach heute <b>${esc(eur(H.left))}</b>, die zweite Zahl auf deiner Karte.${H.pay ? ' Der Zahltag kommt vor Sonntag, deshalb rechnet Budgie bis dahin.' : ''}</p>`}
